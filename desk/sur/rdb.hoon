@@ -15,42 +15,49 @@
       records=(map term record)  ::  set of representations
   ==
 ::
-+$  record  (map * (list *))  ::  get types from schema
-::
 +$  column
   $:  index=@ud
       key=[? primary=?]
-      optional=?  ::  if true, record stores as unit
+      optional=?  ::  if true, record stores as unit (TODO)
       =column-type
   ==
 ::
 +$  column-type
-  $%  ::  just the basics, can add more atom annotations
-      [%atom %ud]  [%atom %ux]  [%atom %da]  [%atom %t]  [%atom %f]
+  $?  ::  just the basics, can add more atom annotations
+      %ud  %ux  %da  %t  %f
       ::  more complex column types = bring your own subtypes
       [%noun %list]  [%noun %map]  [%noun %blob]
   ==
 ::
++$  record  (map key row)
++$  key  value
++$  row  (list value)
++$  value
+  $@  @
+  $?  (unit @)  [%list *]  [%map *]  [%blob *]
+  ==
+::
 +$  query
-  $%  [%select table=@ where=condition]
+  $%  [%select table=?(@ query) where=condition]
+      [%project table=?(@ query) cols=(set term)]
+      [%insert table=?(@ query) rows=(list row)]
+      [%delete table=?(@ query) where=condition]
+      [%table table=@]  ::  to avoid type-loop
   ==
 ::
 +$  condition
   $~  [%n ~]
   $%  [%n ~]
-      ::  [%and condition condition]
-      ::  [%or condition condition]
-      [term selector]
+      [%s t=term s=selector]
+      [%and a=condition b=condition]
+      [%or a=condition b=condition]
   ==
 ::
 +$  selector
-  $%  [%gte @]  [%lte @]  [%other @]
+  $%  [%eq @]   [%not @]
+      [%gte @]  [%lte @]
+      [%atom gat=$-(@ ?)]
+      [%unit gat=$-((unit @) ?)]
+      [%custom gat=$-(* ?)]
   ==
-::
-::  +$  query
-::    $%  [%select from=id conds=(list selector)]
-::        [%project from=id =projector]
-::        [%insert into=id records=(list [@ record])]
-::        [%delete from=id conds=(list selector)]
-::    ==
 --
