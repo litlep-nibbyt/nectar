@@ -5,33 +5,29 @@
 +$  id  @
 +$  primary-key  (pair term iota)
 ::
-++  database
-  |$  [id table]
++$  database
   (map id table)
 ::
-++  table
-  |$  [fields primary-key mol records]
++$  table
   $:  fields=(map term iota)
       primary-key=term
-      schema=mold
       records=(map @ record)
   ==
-  ::|=  [f=(map term iota) p=(pair term iota) r=(map @ record)]
-  ::?.  (~(has by f) p.p)  %.n
-  ::?.  =(-.u.k -.q.p)  %.n
-  ::=/  fset  (~(del in ~(key by f)) p.p)
-  ::%-  ~(all by r)
-  ::::  assert each record has and fits all fields
-  ::|=  =record
-  ::=(fset ~(key by record))
+::
+++  schema
+  |$  [mold]  mold
 ::
 +$  record  *
 ::
+++  selector
+  $_  ^|  |=(* *?)
 ::
+++  projector
+  $_  ^|  |=(* **)
 ::
-+$  selector  $-(* ?)
 +$  query
   $%  [%select from=id conds=(list selector)]
+      [%project from=id =projector]
   ==
 ::
 ::  iota
