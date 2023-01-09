@@ -6,10 +6,14 @@
 +$  primary-key  (pair term iota)
 ::
 +$  database
-  (map id table)
+  $:  owner=term            ::  the creating agent
+      editors=(set term)    ::  owner-only by default
+      tables=(map @ table)  ::  @ can be @t name or just integer
+  ==
 ::
 +$  table
-  $:  fields=(map term iota)
+  $:  id=@
+      fields=(map term iota)
       primary-key=term
       records=(map @ record)
   ==
@@ -28,6 +32,8 @@
 +$  query
   $%  [%select from=id conds=(list selector)]
       [%project from=id =projector]
+      [%insert into=id records=(list [@ record])]
+      [%delete from=id conds=(list selector)]
   ==
 ::
 ::  iota
