@@ -6,13 +6,13 @@
     (silt ~[%my-app])
   %-  malt
   ^-  (list [term table])
-  :~  [%users-table users-table]
-      [%messages-table messages-table]
+  :~  [%users users-table]
+      [%messages messages-table]
   ==
 ::
 ++  users-table
   ^-  table
-  :-  %users-table
+  :-  %users
   :+  %-  ~(gas by *(map term column))
       :~  [%id [0 [& &] | %ud]]
           [%name [1 [| |] | %t]]
@@ -36,7 +36,7 @@
 ::
 ++  messages-table
   ^-  table
-  :-  %messages-table
+  :-  %messages
   :+  %-  ~(gas by *(map term column))
       :~  [%id [0 [& &] | %ud]]
           [%from [1 [| |] | %ud]]
@@ -59,19 +59,19 @@
   =+  c1=[%atom |=(name=@t |(=(name 'nick') =(name 'hocwyn')))]
   =+  c2=[%unit |=(s=(unit @ud) ?~(s %.n (gte u.s 500)))]
   :+  %select
-    table=%users-table
+    table=%users
   where=[%and [%s %name c1] [%s %score c2]]
 ::
 ++  project-query
   ^-  query
   :+  %project
-    table=%users-table
+    table=%users
   cols=(silt `(list term)`~[%id %score])
 ::
 ++  insert-query
   ^-  query
   :+  %insert
-    table=%users-table
+    table=%users
   :~  ~[6 'tim' `800 [%list ~['ben']]]
       ~[7 'ben' `300 [%list ~]]
       ~[8 'steve' `500 [%list ~['ben']]]
@@ -92,8 +92,15 @@
 ++  cross-product-query
   ^-  query
   :+  %cross-product
-    %users-table
-  %messages-table
+    %users
+  %messages
+::
+++  theta-join-query
+  ^-  query
+  :^    %theta-join
+      %users
+    %messages
+  where=[%d %users-name %messages-from %eq]
 ::
 ::  engine
 ::
@@ -120,14 +127,25 @@
     |-  ^-  record
     ?-    -.where.q
         %s
-      ::  term: apply selector on that col
-      =/  =column  (~(got by schema.table) t.where.q)
+      ::  single: apply selector on that col
+      =/  =column  (~(got by schema.table) c.where.q)
       %-  ~(gas by *record)
       %+  skim  ~(tap by rec)
       |=  [=key =row]
-      %^  apply-selector
-        s.where.q  column
+      %+  apply-selector
+        s.where.q
       (snag index.column row)
+    ::
+        %d
+      ::  dual: apply comparator on two cols
+      =/  c1  (~(got by schema.table) c1.where.q)
+      =/  c2  (~(got by schema.table) c2.where.q)
+      %-  ~(gas by *record)
+      %+  skim  ~(tap by rec)
+      |=  [=key =row]
+      %+  apply-comparator
+        c.where.q
+      [(snag index.c1 row) (snag index.c2 row)]
     ::
         %n
       ::  no where clause means get everything
@@ -250,6 +268,10 @@
     %^  spin  ~(tap by rec2)  i
     |=  [b=[=key =row] j=@]
     [[j (weld row.a row.b)] +(j)]
+  ::
+      %theta-join
+    ::  cross-product on two tables then select
+    $(q [%select [%cross-product table.q with.q] where.q])
   ==
 ::
 ++  valid-row
@@ -278,9 +300,9 @@
   $(row t.row, sch t.sch)
 ::
 ++  apply-selector
-  |=  [=selector =column =value]
+  |=  [=selector =value]
   ^-  ?
-  ?:  ?=(%s -.selector)
+  ?:  ?=(%custom -.selector)
     (gat.selector value)
   ?:  ?=(%unit -.selector)
     ?>  ?=((unit @) value)
@@ -292,5 +314,18 @@
     %gte   (gte value +.selector)
     %lte   (lte value +.selector)
     %atom  (gat.selector value)
+  ==
+::
+++  apply-comparator
+  |=  [=comparator a=value b=value]
+  ^-  ?
+  ::  ?:  ?=(%custom -.selector)
+  ::    (gat.selector value)
+  ::  ?:  ?=(%unit -.selector)
+  ::    ?>  ?=((unit @) value)
+  ::    (gat.selector value)
+  ?>  ?=([@ @] [a b])
+  ?-  comparator
+    %eq  =(a b)
   ==
 --

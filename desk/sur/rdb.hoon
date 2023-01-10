@@ -47,13 +47,15 @@
       [%delete table=?(term query) where=condition]
       [%rename table=?(term query) old=term new=term]
       [%cross-product table=?(term query) with=?(term query)]
+      [%theta-join table=?(term query) with=?(term query) where=condition]
       [%table table=term]  ::  to avoid type-loop
   ==
 ::
 +$  condition
   $~  [%n ~]
   $%  [%n ~]
-      [%s t=term s=selector]
+      [%s c=term s=selector]
+      [%d c1=term c2=term c=comparator]
       [%and a=condition b=condition]
       [%or a=condition b=condition]
   ==
@@ -61,8 +63,12 @@
 +$  selector
   $%  [%eq @]   [%not @]
       [%gte @]  [%lte @]
-      [%s gat=$-(value ?)]
+      [%custom gat=$-(value ?)]
       [%atom gat=$-(@ ?)]
       [%unit gat=$-((unit @) ?)]
+  ==
+::
++$  comparator
+  $%  %eq
   ==
 --
