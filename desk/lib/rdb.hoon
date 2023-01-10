@@ -8,6 +8,7 @@
   ^-  (list [term table])
   :~  [%users users-table]
       [%messages messages-table]
+      [%big-table big-table]
   ==
 ::
 ++  users-table
@@ -26,12 +27,12 @@
   :-  %id
   ^-  record
   %-  ~(gas by *record)
-  :~  [0 ~[0 'nick' `100 [%list ~['ben']]]]
-      [1 ~[1 'drew' `300 [%list ~['ben']]]]
-      [2 ~[2 'will' `700 [%list ~['ben']]]]
-      [3 ~[3 'tobias' `1.000 [%list ~['ben']]]]
-      [4 ~[4 'christian' `1.500 [%list ~['ben']]]]
-      [5 ~[5 'hocwyn' `1.200 [%list ~['ben']]]]
+  :~  [0 ~[0 'nick' `100 [%l ~['ben']]]]
+      [1 ~[1 'drew' `300 [%l ~['ben']]]]
+      [2 ~[2 'will' `700 [%l ~['ben']]]]
+      [3 ~[3 'tobias' `1.000 [%l ~['ben']]]]
+      [4 ~[4 'christian' `1.500 [%l ~['ben']]]]
+      [5 ~[5 'hocwyn' `1.200 [%l ~['ben']]]]
   ==
 ::
 ++  messages-table
@@ -54,6 +55,33 @@
       [3 ~[3 'ben' 'test']]
   ==
 ::
+++  big-table
+  ^-  table
+  :-  %big-table
+  :+  %-  ~(gas by *(map term column))
+      :~  [%id [0 [& &] | %ud]]
+          [%num [1 [| |] | %ud]]
+          [%lis [2 [| |] | %list]]
+      ==
+    primary-key=%id
+  %-  ~(gas by *(map term record))
+  :_  ~
+  :-  %id
+  ^-  record
+  %-  ~(gas by *record)
+  %+  turn  (gulf 0 100.000)
+  |=  i=@
+  [i ~[i (mul i 1.000) [%l (reap 5 i)]]]
+::
+++  big-insert
+  |=  i=@
+  ^-  query
+  :+  %insert
+    table=%big-table
+  %+  turn  (gulf i (add i 5))
+  |=  i=@
+  ~[i (mul i 1.000) [%l (reap 5 i)]]
+::
 ++  select-query
   ^-  query
   =+  c1=[%atom |=(name=@t |(=(name 'nick') =(name 'hocwyn')))]
@@ -72,9 +100,9 @@
   ^-  query
   :+  %insert
     table=%users
-  :~  ~[6 'tim' `800 [%list ~['ben']]]
-      ~[7 'ben' `300 [%list ~]]
-      ~[8 'steve' `500 [%list ~['ben']]]
+  :~  ~[6 'tim' `800 [%l ~['ben']]]
+      ~[7 'ben' `300 [%l ~]]
+      ~[8 'steve' `500 [%l ~['ben']]]
   ==
 ::
 ++  insert-select-query
@@ -103,6 +131,12 @@
   where=[%d %users-name %messages-from %eq]
 ::
 ::  engine
+::
+++  modify-db
+  |=  [db=database q=query]
+  ^-  database
+  =/  new=table  (run-query db q)
+  db(tables (~(put by tables.db) name.new new))
 ::
 ++  run-query
   |=  [db=database q=query]
@@ -269,6 +303,34 @@
     |=  [b=[=key =row] j=@]
     [[j (weld row.a row.b)] +(j)]
   ::
+      %union
+    ::  combine two tables, if possible
+    ::  TODO validation stuff, assumes matching schemae
+    =/  with=^table
+      ?@  with.q
+        (~(got by tables.db) with.q)
+      $(q with.q)
+    :^    name.table
+        schema.table
+      primary-key.table
+    %+  ~(put by records.table)  primary-key.table
+    %-  ~(uni by (~(got by records.table) primary-key.table))
+    (~(got by records.with) primary-key.with)
+  ::
+      %difference
+    ::  get the difference between two tables
+    ::  TODO validation stuff, assumes matching schemae
+    =/  with=^table
+      ?@  with.q
+        (~(got by tables.db) with.q)
+      $(q with.q)
+    :^    name.table
+        schema.table
+      primary-key.table
+    %+  ~(put by records.table)  primary-key.table
+    %-  ~(dif by (~(got by records.table) primary-key.table))
+    (~(got by records.with) primary-key.with)
+  ::
       %theta-join
     ::  cross-product on two tables then select
     $(q [%select [%cross-product table.q with.q] where.q])
@@ -313,6 +375,8 @@
     %not   !=(value +.selector)
     %gte   (gte value +.selector)
     %lte   (lte value +.selector)
+    %gth   (gth value +.selector)
+    %lth   (lth value +.selector)
     %atom  (gat.selector value)
   ==
 ::
@@ -324,8 +388,13 @@
   ::  ?:  ?=(%unit -.selector)
   ::    ?>  ?=((unit @) value)
   ::    (gat.selector value)
-  ?>  ?=([@ @] [a b])
+  ?>  &(?=(@ a) ?=(@ b))
   ?-  comparator
-    %eq  =(a b)
+    %eq   =(a b)
+    %not  !=(a b)
+    %gte  (gte a b)
+    %lte  (lte a b)
+    %gth  (gth a b)
+    %lth  (lth a b)
   ==
 --

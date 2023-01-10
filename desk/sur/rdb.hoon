@@ -36,8 +36,8 @@
 +$  value
   $@  @
   $?  (unit @)
-  $%  [%list (list value)]  [%set (set value)]
-      [%map (map value value)]  [%blob *]
+  $%  [%l (list value)]       [%s (set value)]
+      [%m (map value value)]  [%b *]
   ==  ==
 ::
 +$  query
@@ -47,6 +47,8 @@
       [%delete table=?(term query) where=condition]
       [%rename table=?(term query) old=term new=term]
       [%cross-product table=?(term query) with=?(term query)]
+      [%union table=?(term query) with=?(term query)]
+      [%difference table=?(term query) with=?(term query)]
       [%theta-join table=?(term query) with=?(term query) where=condition]
       [%table table=term]  ::  to avoid type-loop
   ==
@@ -63,12 +65,15 @@
 +$  selector
   $%  [%eq @]   [%not @]
       [%gte @]  [%lte @]
+      [%gth @]  [%lth @]
       [%custom gat=$-(value ?)]
       [%atom gat=$-(@ ?)]
       [%unit gat=$-((unit @) ?)]
   ==
 ::
 +$  comparator
-  $%  %eq
+  $%  %eq   %not
+      %gte  %lte
+      %gth  %lth
   ==
 --
