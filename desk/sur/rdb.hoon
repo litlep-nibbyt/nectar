@@ -3,35 +3,46 @@
 ::            database
 ::
 |%
-+$  database
-  $:  owner=term            ::  the creating agent
-      editors=(set term)    ::  owner-only by default
-      tables=(map term table)
-  ==
-::
 +$  table
   $:  name=term
-      schema=(map term column)  ::  term is semantic label
-      primary-key=term
-      records=(map term record)  ::  set of representations
+      owner=term                     ::  agent name
+      editors=(set term)             ::  owner-only by default
+      =schema
+      =indices
+      records=(map term record)
   ==
 ::
-+$  column
-  $:  index=@ud
-      key=[? primary=?]
-      optional=?  ::  if true, record stores as unit
-      =column-type
++$  schema   (map term column-type)  ::  term is semantic label
++$  indices  (map term key-type)
+::
++$  key-type
+  $:  cols=(list term)  ::  which columns included in key (at list position)
+      primary=?         ::  only one primary key per table
+      clustered=(unit $-([key key] ?))
+      unique=?          ::  if not unique, store rows in list under key
   ==
 ::
 +$  column-type
-  $?  ::  just the basics, can add more atom annotations
-      %ud  %ux  %da  %t  %f
-      ::  more complex column types
-      %list  %set  %map  %blob
+  $:  spot=@      ::  where column sits in row
+      optional=?  ::  if optional, value is unit
+      $=  typ
+      $?  ::  just the basics, can add more atom annotations
+          %ud  %ux  %da  %t  %f
+          ::  more complex column types
+          %list  %set  %map  %blob
+      ==
   ==
 ::
-+$  record  (map key row)
-+$  key  value
++$  record
+  %+  each
+    (tree [key row])       ::  unique key
+  (tree [key (list row)])  ::  non-unique key
+      ::  really annoying not working
+      ::  [%mop _(mop key row)]             ::  unique, clustered
+      ::  [%jar (jar key row)]             ::  non-unique, unclustered
+      ::  [%jar-mop (mop key (list row))]  ::  non-unique, clustered
+::
++$  key  (list value)
 +$  row  (list value)
 +$  value
   $@  @
@@ -66,14 +77,17 @@
   $%  [%eq @]   [%not @]
       [%gte @]  [%lte @]
       [%gth @]  [%lth @]
-      [%custom gat=$-(value ?)]
       [%atom gat=$-(@ ?)]
       [%unit gat=$-((unit @) ?)]
+      [%custom gat=$-(value ?)]
   ==
 ::
 +$  comparator
   $%  %eq   %not
       %gte  %lte
       %gth  %lth
+      [%atom gat=$-([@ @] ?)]
+      [%unit gat=$-([(unit @) (unit @)] ?)]
+      [%custom gat=$-([value value] ?)]
   ==
 --
