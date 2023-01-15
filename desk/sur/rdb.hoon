@@ -5,21 +5,22 @@
 |%
 +$  table
   $:  name=term
-      owner=term                     ::  agent name
-      editors=(set term)             ::  owner-only by default
+      owner=term          ::  agent name
+      editors=(set term)  ::  owner-only by default
       =schema
+      primary-key=(list term)
       =indices
-      records=(map term record)
+      records=(map (list term) record)
   ==
 ::
 +$  schema   (map term column-type)  ::  term is semantic label
-+$  indices  (map term key-type)
++$  indices  (map (list term) key-type)
 ::
 +$  key-type
   $:  cols=(list term)  ::  which columns included in key (at list position)
-      primary=?         ::  only one primary key per table
-      clustered=(unit $-([key key] ?))
+      primary=?         ::  only one primary key per table (must be unique)
       unique=?          ::  if not unique, store rows in list under key
+      clustered=(unit $-([key key] ?))  ::  ordering function
   ==
 ::
 +$  column-type
@@ -37,10 +38,6 @@
   %+  each
     (tree [key row])       ::  unique key
   (tree [key (list row)])  ::  non-unique key
-      ::  really annoying not working
-      ::  [%mop _(mop key row)]             ::  unique, clustered
-      ::  [%jar (jar key row)]             ::  non-unique, unclustered
-      ::  [%jar-mop (mop key (list row))]  ::  non-unique, clustered
 ::
 +$  key  (list value)
 +$  row  (list value)

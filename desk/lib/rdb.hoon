@@ -18,10 +18,11 @@
             [%score [2 & %ud]]
             [%frens [3 | %list]]
         ==
+        primary-key=~[%id]
         ::  indices
-        %-  ~(gas by *(map term key-type))
-        :~  [%id [~[%id] %.y ~ %.y]]
-            [%scores [~[%score] %.n `score-cmp %.n]]
+        %-  ~(gas by *(map (list term) key-type))
+        :~  [~[%id] [~[%id] %.y %.y ~]]
+            [~[%scores] [~[%score] %.n %.n `score-cmp]]
         ==
         ~
     ==
@@ -33,12 +34,19 @@
         ~[4 'christian' `1.500 [%l ~['ben']]]
         ~[5 'hocwyn' `1.200 [%l ~['ben']]]
     ==
-  (create:(tab table) initial-data)
+  =+  (create:(tab table) initial-data)
+  =+  (insert:(tab -) ~[~[6 'ben' ~ [%l ~]]])
+  =+  (delete:(tab -) [%s %id [%eq 2]])
+  %-  select:(tab -)
+  :+  %or
+    [%s %score [%unit |=(s=(unit @ud) (gte (fall s 0) 300))]]
+  [%s %name [%eq 'ben']]
 ::
 ::  table edit engine
 ::
 ++  tab
   |*  =table
+  ::  TODO figure this out
   ::  =>  |%
   ::      ++  comparators  (map term comparator)
   ::      ++  comparator  $_  ^|  |=([mold mold] *?)
@@ -47,18 +55,22 @@
   |%
   ++  create
     |=  rows=(list row)
+    ~&  >  "making table"
+    ~>  %bout
     ^+  table
     ::
     ::  build a new table
     ::  destroys any existing records
     ::
-    ::  can only have 1 primary key
+    ::  can only have 1 primary key, must be the indicated one
+    ::  primary key must be unique
     ::
     ?>  .=  1
         %-  lent
         %+  skim  ~(tap by indices.table)
-        |=  [term key-type]
+        |=  [(list term) key-type]
         primary
+    ?>  &(primary unique):(~(got by indices.table) primary-key.table)
     ::
     ::  columns must be contiguous from 0
     ::  and have no overlap
@@ -75,21 +87,16 @@
     ::
     %=    table
         records
-      %-  ~(gas by *(map term record))
+      %-  ~(gas by *(map (list term) record))
       %+  turn  ~(tap by indices.table)
-      |=  [name=term key-type]
-      ::  TODO handle unique/non
+      |=  [name=(list term) key-type]
       =/  lis=(list [=key =row])
         %+  turn  rows
         |=  =row
-        :_  row
-        ::  grab key column(s)
-        ^-  key
+        :_  row  ^-  key
         %+  turn  cols
         |=  col=term
-        %+  snag
-          spot:(~(got by schema.table) col)
-        row
+        (snag spot:(~(got by schema.table) col) row)
       :-  name
       ?:  unique
         :-  %&  ::  unique key
@@ -121,120 +128,149 @@
         (put:mj mop-jar key.i.lis [row.i.lis -])
       ==
     ==
+  ::
+  ::  select looks for most efficient record to use by seeing
+  ::  if the relevant columns form an index
+  ::
+  ++  select
+    |=  where=condition
+    ~&  >  "performing select"
+    ~>  %bout
+    ^-  (list row)
+    =/  best=(unit record)
+      |-
+      ?-    -.where
+          %n  ~
+      ::
+          %s  (~(get by records.table) ~[c.where])
+      ::
+          %d
+        ?^  good=(~(get by records.table) ~[c1.where c2.where])
+          good
+        ?^  next-good=(~(get by records.table) ~[c2.where c1.where])
+          next-good
+        ~
+      ::
+          ?(%and %or)
+        =/  good=(unit record)  $(where a.where)
+        ?^  good  good
+        $(where b.where)
+      ==
+    =/  rec=record
+      ?^  best  u.best
+      (~(got by records.table) primary-key.table)
+    ::
+    ::  now, if we have a keyed record for our selector
+    ::  we can use map operations directly
+    ::  TODO implement that here
+    ::
+    =/  lis=(list row)
+      ?:  ?=(%& -.rec)
+        ~(val by p.rec)
+      (zing ~(val by p.rec))
+    |-
+    ?-    -.where
+        %s
+      ::  single: apply selector on that col
+      =/  c  (~(got by schema.table) c.where)
+      %+  skim  lis
+      |=  =row
+      (apply-selector s.where (snag spot.c row))
+    ::
+        %d
+      ::  dual: apply comparator on two cols
+      =/  c1  (~(got by schema.table) c1.where)
+      =/  c2  (~(got by schema.table) c2.where)
+      %+  skim  lis
+      |=  =row
+      %+  apply-comparator
+        c.where
+      [(snag spot.c1 row) (snag spot.c2 row)]
+    ::
+        %n
+      ::  no where clause means get everything
+      lis
+    ::
+        %or
+      ::  both clauses applied to full record and results merged
+      =/  a=(list row)  $(where a.where)
+      =/  b=(list row)  $(where b.where)
+      (weld a b)
+    ::
+        %and
+      ::  clauses applied sequentially to one record
+      $(where b.where, lis $(where a.where)) :: works?
+    ==
+  ::
+  ::  produces a new table with rows inserted across all records
+  ::
+  ++  insert
+    |=  rows=(list row)
+    ~&  >  "performing insert"
+    ~>  %bout
+    ^+  table
+    %=    table
+        records
+      %-  ~(rut by records.table)
+      |=  [name=(list term) =record]
+      =/  =key-type  (~(got by indices.table) name)
+      =/  lis=(list [=key =row])
+        %+  turn  rows
+        |=  =row
+        :_  row  ^-  key
+        %+  turn  cols.key-type
+        |=  col=term
+        (snag spot:(~(got by schema.table) col) row)
+      ?:  unique.key-type
+        ?>  ?=(%& -.record)
+        ?~  clustered.key-type
+          ::  map
+          |-
+          ?~  lis  record
+          $(lis t.lis, p.record (~(put by p.record) i.lis))
+        ::  mop
+        ?>  ?=(%& -.record)
+        =/  m  ((on key row) u.clustered.key-type)
+        |-
+        ?~  lis  record
+        $(lis t.lis, p.record (put:m p.record i.lis))
+      ?>  ?=(%| -.record)
+      ?~  clustered.key-type
+        ::  jar
+        |-
+        ?~  lis  record
+        $(lis t.lis, p.record (~(add ja p.record) i.lis))
+      ::  mop-jar
+      =/  mj  ((on key (list row)) u.clustered.key-type)
+      |-
+      ?~  lis  record
+      %=    $
+          lis  t.lis
+          p.record
+        =+  (get:mj p.record key.i.lis)
+        (put:mj p.record key.i.lis [row.i.lis -])
+      ==
+    ==
+  ::
+  ::  produces a new table with rows meeting the condition
+  ::  deleted across all records. after deleting records,
+  ::  needs to rebuild all secondary indices, so deletes
+  ::  take a pretty long time
+  ::
+  ++  delete
+    |=  where=condition
+    ~&  >  "performing delete"
+    ~>  %bout
+    ^+  table
+    =/  to-delete=(list row)
+      (select where)
+    =/  remaining=(set row)
+      =/  rec  (~(got by records.table) primary-key.table)
+      ?>  ?=(%& -.rec)
+      (~(dif in (silt ~(val by p.rec))) (silt to-delete))
+    (create ~(tap in remaining))
   --
 ::
-:: ++  select-query
-::   ^-  query
-::   =+  c1=[%atom |=(name=@t |(=(name 'nick') =(name 'hocwyn')))]
-::   =+  c2=[%unit |=(s=(unit @ud) ?~(s %.n (gte u.s 500)))]
-::   :+  %select
-::     table=%users
-::   where=[%and [%s %name c1] [%s %score c2]]
-:: ::
-:: ++  project-query
-::   ^-  query
-::   :+  %project
-::     table=%users
-::   cols=(silt `(list term)`~[%id %score])
-:: ::
-:: ++  insert-query
-::   ^-  query
-::   :+  %insert
-::     table=%users
-::   :~  ~[6 'tim' `800 [%l ~['ben']]]
-::       ~[7 'ben' `300 [%l ~]]
-::       ~[8 'steve' `500 [%l ~['ben']]]
-::   ==
-:: ::
-:: ++  insert-select-query
-::   ^-  query
-::   :+  %select
-::     insert-query
-::   where=[%s %score %unit |=(s=(unit @ud) ?~(s %.n (gte u.s 500)))]
-:: ::
-:: ++  insert-delete-query
-::   ^-  query
-::   :+  %delete
-::     insert-query
-::   where=[%s %score %unit |=(s=(unit @ud) ?~(s %.n (lte u.s 1.000)))]
-:: ::
-:: ++  cross-product-query
-::   ^-  query
-::   :+  %cross-product
-::     %users
-::   %messages
-:: ::
-:: ++  theta-join-query
-::   ^-  query
-::   :^    %theta-join
-::       %users
-::     %messages
-::   where=[%d %users-name %messages-from %eq]
-:: ::
-:: ::  engine
-:: ::
-:: ++  modify-db
-::   |=  [db=database q=query]
-::   ^-  database
-::   =/  new=table  (run-query db q)
-::   db(tables (~(put by tables.db) name.new new))
-:: ::
-:: ++  run-query
-::   |=  [db=database q=query]
-::   ~>  %bout
-::   ^-  table
-::   ?:  ?=(%table -.q)
-::     (~(got by tables.db) table.q)
-::   =/  =table
-::     ?@  table.q
-::       (~(got by tables.db) table.q)
-::     $(q table.q)
-::   ?-    -.q
-::       %select
-::     ::  returns table with only selected records
-::     ^+  table
-::     ::  choose which record to use (optimization)
-::     =/  rec=record  (~(got by records.table) primary-key.table)
-::     :^    name.table
-::         schema.table
-::       primary-key.table
-::     %+  ~(put by records.table)  primary-key.table
-::     |-  ^-  record
-::     ?-    -.where.q
-::         %s
-::       ::  single: apply selector on that col
-::       =/  =column  (~(got by schema.table) c.where.q)
-::       %-  ~(gas by *record)
-::       %+  skim  ~(tap by rec)
-::       |=  [=key =row]
-::       %+  apply-selector
-::         s.where.q
-::       (snag index.column row)
-::     ::
-::         %d
-::       ::  dual: apply comparator on two cols
-::       =/  c1  (~(got by schema.table) c1.where.q)
-::       =/  c2  (~(got by schema.table) c2.where.q)
-::       %-  ~(gas by *record)
-::       %+  skim  ~(tap by rec)
-::       |=  [=key =row]
-::       %+  apply-comparator
-::         c.where.q
-::       [(snag index.c1 row) (snag index.c2 row)]
-::     ::
-::         %n
-::       ::  no where clause means get everything
-::       rec
-::     ::
-::         %or
-::       ::  both clauses applied to full record and results merged
-::       (~(uni by $(where.q a.where.q)) $(where.q b.where.q))
-::     ::
-::         %and
-::       ::  clauses applied sequentially to one record
-::       $(where.q b.where.q, rec $(where.q a.where.q)) :: works?s
-::     ==
-::   ::
 ::       %project
 ::     ::  returns a table with some subset of columns
 ::     ^+  table
@@ -262,26 +298,6 @@
 ::     %+  turn  indices
 ::     |=  i=@
 ::     (snag i row)
-::   ::
-::       %insert
-::     ::  returns new table
-::     ^+  table
-::     ::  insert all rows into table
-::     ::  TODO primary key stuff
-::     =/  rec=record  (~(got by records.table) primary-key.table)
-::     =/  sch=(list column)
-::       %+  sort  ~(val by schema.table)
-::       |=  [a=[i=@ *] b=[i=@ *]]
-::       (lth i.a i.b)
-::     |-
-::     ?~  rows.q
-::       table(records (~(put by records.table) primary-key.table rec))
-::     ?.  (valid-row sch i.rows.q)
-::       $(rows.q t.rows.q)
-::     =/  pri=value
-::       =-  (snag - i.rows.q)
-::       index:(~(got by schema.table) primary-key.table)
-::     $(rows.q t.rows.q, rec (~(put by rec) pri i.rows.q))
 ::   ::
 ::       %delete
 ::     ^+  table
