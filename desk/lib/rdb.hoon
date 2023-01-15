@@ -36,11 +36,12 @@
     ==
   =+  (create:(tab table) initial-data)
   =+  (insert:(tab -) ~[~[6 'ben' ~ [%l ~]]])
-  =+  (delete:(tab -) [%s %id [%eq 2]])
-  %-  select:(tab -)
-  :+  %or
-    [%s %score [%unit |=(s=(unit @ud) (gte (fall s 0) 300))]]
-  [%s %name [%eq 'ben']]
+  =+  tabl=(delete:(tab -) [%s %id [%eq 2]])
+  =+  %-  select:(tab tabl)
+      :+  %or
+        [%s %score [%unit |=(s=(unit @ud) (gte (fall s 0) 300))]]
+      [%s %name [%eq 'ben']]
+  (project:(tab tabl) - (silt `(list term)`~[%name %score]))
 ::
 ::  table edit engine
 ::
@@ -269,6 +270,32 @@
       ?>  ?=(%& -.rec)
       (~(dif in (silt ~(val by p.rec))) (silt to-delete))
     (create ~(tap in remaining))
+  ::
+  ::  produces a list of rows along with a schema for interpreting
+  ::  those rows, since projection creates a new row-ordering
+  ::  takes in a (list row) which can be made from table with +get-rows
+  ::
+  ++  project
+    |=  [rows=(list row) cols=(set term)]
+    ~&  >  "performing projection"
+    ~>  %bout
+    ^-  (pair schema (list row))
+    ::  need to iterate through all rows, so no need
+    ::  to determine optimal record to pull from?
+    :-  %-  ~(gas by *(map term column-type))
+        =<  p
+        %^  spin  ~(tap in cols)  0
+        |=  [=term i=@]
+        =/  col  (~(got by schema.table) term)
+        [[term col(spot i)] +(i)]
+    =/  is=(list @)
+      %+  turn  ~(tap in cols)
+      |=  =term
+      spot:(~(got by schema.table) term)
+    %+  turn  rows
+    |=  =row
+    %+  turn  is
+    |=(i=@ (snag i row))
   --
 ::
 ::       %project
