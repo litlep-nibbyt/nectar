@@ -35,6 +35,12 @@
   =+  (delete:- at-key=~[%id] where=[%s %id %eq 2])
   =+  (select:- at-key=~[%top-score] [%s %top-score %lte 300])
   (project:- at-key=~[%top-score] ~[%id %top-score %last-score])
+  ::  %+  cross:-  at-key=~[%top-score]
+  ::  :-  %-  ~(gas by *(map term column-type))
+  ::      :~  [%loach [0 | %ud]]
+  ::      ==
+  ::  :~  ~[8]  ~[9]  ~[10]
+  ::  ==
 ::
 ++  bigger-table
   =/  =table
@@ -487,110 +493,51 @@
     |=  =row
     %+  turn  is
     |=(i=@ (snag i row))
+  ::
+  ::  cross-product: combinatorily join two records
+  ::
+  ++  cross
+    |=  [at-key=(list term) with=(pair schema (list row))]
+    ~&  >  "performing cross-product"
+    ~>  %bout
+    ^-  (pair schema (list row))
+    =/  l  ~(wyt by schema.table)
+    :-  %-  ~(gas by *(map term column-type))
+        %+  weld
+          %+  turn  ~(tap by schema.table)
+          |=  [=term c=column-type]
+          [(cat 3 'l-' term) c]
+        %+  turn  ~(tap by p.with)
+        |=  [=term c=column-type]
+        [(cat 3 'r-' term) c(spot (add spot.c l))]
+    %-  zing
+    %+  turn  (get-rows at-key)
+    |=  l=row
+    %+  turn  q.with
+    |=  r=row
+    (weld l r)
+  ::
+  ::  union: concatenate two records
+  ::
+  ++  union
+    |=  [at-key=(list term) with=(pair schema (list row))]
+    ~&  >  "performing union"
+    ~>  %bout
+    ^-  (pair schema (list row))
+    =/  l  ~(wyt by schema.table)
+    ::  unlike cross-product, if two columns in schemae
+    ::  share the same name, they become the same column
+    ::  TODO adjust to get correct spot values
+    :-  %-  (~(uno by schema.table) p.with)
+        |=  [term c1=column-type c2=column-type]
+        ::  if overlap, take type from our table
+        [0 |(optional.c1 optional.c2) typ.c1]
+    ::  TODO pad rows to get proper alignment
+    %+  weld
+      (get-rows at-key)
+    q.with
   --
-::  record selection stuff
-:: =/  best=(unit record)
-::       |-
-::       ?-    -.where
-::           %n  ~
-::       ::
-::           %s  (~(get by records.table) ~[c.where])
-::       ::
-::           %d
-::         ?^  good=(~(get by records.table) ~[c1.where c2.where])
-::           good
-::         ?^  next-good=(~(get by records.table) ~[c2.where c1.where])
-::           next-good
-::         ~
-::       ::
-::           ?(%and %or)
-::         =/  good=(unit record)  $(where a.where)
-::         ?^  good  good
-::         $(where b.where)
-::       ==
-::
-::       %project
-::     ::  returns a table with some subset of columns
-::     ^+  table
-::     ::  choose which record to use (optimization)
-::     =/  rec=record  (~(got by records.table) primary-key.table)
-::     =/  indices=(list @)
-::       %+  turn  ~(tap in cols.q)
-::       |=  =term
-::       index:(~(got by schema.table) term)
-::     =.  schema.table
-::       %-  ~(gas by *(map term column))
-::       =<  p
-::       %^  spin  ~(tap in cols.q)  0
-::       |=  [=term i=@]
-::       =/  col  (~(got by schema.table) term)
-::       [[term col(index i)] +(i)]
-::     :^    name.table
-::         schema.table
-::       primary-key.table
-::     %+  ~(put by records.table)  primary-key.table
-::     %-  ~(gas by *record)
-::     %+  turn  ~(tap by rec)
-::     |=  [=key =row]
-::     :-  key
-::     %+  turn  indices
-::     |=  i=@
-::     (snag i row)
 
-
-::       %cross-product
-::     ::  combine two tables
-::     =/  with=^table
-::       ?@  with.q
-::         (~(got by tables.db) with.q)
-::       $(q with.q)
-::     :-  (cat 3 name.table (cat 3 '-' name.with))
-::     ::  create schema for new table by combining each
-::     ::  TODO better primary key stuff
-::     =/  l  ~(wyt by schema.table)
-::     =/  n1  (cat 3 name.table '-')
-::     =/  n2  (cat 3 name.with '-')
-::     :+  %-  ~(gas by *(map term column))
-::         %+  welp
-::           %+  turn  ~(tap by schema.table)
-::           |=  [=term =column]
-::           [(cat 3 n1 term) column]
-::         %+  turn  ~(tap by schema.with)
-::         |=  [=term =column]
-::         :-  (cat 3 n2 term)
-::         column(index (add index.column l), primary.key %.n)
-::       %id
-::     ::  just handling primary key record
-::     =/  rec1  (~(got by records.table) primary-key.table)
-::     =/  rec2  (~(got by records.with) primary-key.with)
-::     %-  ~(gas by *(map term record))
-::     :_  ~
-::     :-  %id
-::     ^-  record
-::     %-  ~(gas by *record)
-::     %-  zing
-::     =<  p
-::     %^  spin  ~(tap by rec1)  0
-::     |=  [a=[=key =row] i=@]
-::     ^-  [(list [key row]) @]
-::     %^  spin  ~(tap by rec2)  i
-::     |=  [b=[=key =row] j=@]
-::     [[j (weld row.a row.b)] +(j)]
-::   ::
-::       %union
-::     ::  combine two tables, if possible
-::     ::  TODO validation stuff, assumes matching schemae
-::     =/  with=^table
-::       ?@  with.q
-::         (~(got by tables.db) with.q)
-::       $(q with.q)
-::     :^    name.table
-::         schema.table
-::       primary-key.table
-::     %+  ~(put by records.table)  primary-key.table
-::     %-  ~(uni by (~(got by records.table) primary-key.table))
-::     (~(got by records.with) primary-key.with)
-::   ::
 ::       %difference
 ::     ::  get the difference between two tables
 ::     ::  TODO validation stuff, assumes matching schemae
