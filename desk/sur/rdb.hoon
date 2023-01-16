@@ -20,8 +20,8 @@
   $:  cols=(list term)  ::  which columns included in key (at list position)
       primary=?         ::  only one primary key per table (must be unique)
       unique=?          ::  if not unique, store rows in list under key
-      clustered=(unit $-([key key] ?))  ::  ordering function
-  ==
+      clustered=(unit comparator)  ::  ordering function -- if clustered,
+  ==                               ::  must be *singular* column in key.
 ::
 +$  column-type
   $:  spot=@      ::  where column sits in row
@@ -65,7 +65,7 @@
   $~  [%n ~]
   $%  [%n ~]
       [%s c=term s=selector]
-      [%d c1=term c2=term c=comparator]
+      [%d c1=term c=comparator c2=term]
       [%and a=condition b=condition]
       [%or a=condition b=condition]
   ==
