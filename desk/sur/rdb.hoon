@@ -12,7 +12,7 @@
 ::
 +$  table
   $:  =schema
-      primary-key=column-name
+      primary-key=(list column-name)
       =indices
       records=(map (list column-name) record)
   ==
@@ -80,9 +80,9 @@
   $-([value value] ?)
 ::
 +$  query
-  $%  [%select table=term where=condition]
-      [%project table=term cols=(set term)]
-      [%theta-join table=term with=term where=condition]
+  $%  [%select table=?(term query) where=condition]
+      [%project table=?(term query) cols=(list term)]
+      [%theta-join table=?(term query) with=?(term query) where=condition]
       [%table table=term ~]  ::  to avoid type-loop
   ==
 --

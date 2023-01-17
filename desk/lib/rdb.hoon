@@ -11,7 +11,7 @@
             [%last-score [3 | %ud]]
             [%frens [4 | %list]]
         ==
-        primary-key=%id
+        primary-key=~[%id]
         ::  indices
         %-  ~(gas by *(map (list term) key-type))
         :~  [~[%id] [~[%id] %.y %.y %.y]]
@@ -38,7 +38,7 @@
             [%to [2 | %t]]
             [%message [3 | %t]]
         ==
-        primary-key=%uuid
+        primary-key=~[%uuid]
         ::  indices
         %-  ~(gas by *(map (list term) key-type))
         :~  [~[%uuid] [~[%uuid] %.y %.y %.n]]
@@ -59,7 +59,7 @@
   (add-tab:- %messages messages-table)
 ::
 +$  my-row-type
-  [id=@ name=@t top-score=@ud last-score=@ud frens=[%l (list @t)] uuid=@ from=@t to=@t msg=@t ~]
+  [user-id=@ msg-uuid=@ top-score=@ud from=@t msg=@t ~]
 ::
 ++  my-query
   =+  (insert:my-db %users ~[~[6 'ben' 0 0 [%l ~]]])
@@ -67,10 +67,12 @@
   =+  (delete:- %users where=[%s %id %& %eq 4])
   ::  (q:- [%select %users where=[%s %id %& %gth 2]])
   %+  turn
-    (q:- [%theta-join %users %messages where=[%d %l-name %&^%eq %r-from]])
+    %-  q:-
+    :+  %project
+      [%theta-join %users %messages where=[%d %l-name %&^%eq %r-from]]
+    `(list term)`~[%l-id %r-uuid %l-top-score %r-from %r-message]
   |=  =row
   !<(my-row-type [-:!>(*my-row-type) row])
-
 ::
 ::  database engine
 ::
@@ -94,7 +96,7 @@
   ++  delete
     |=  [name=table-name where=condition]
     =/  tab  (~(got by tables) name)
-    =/  query-key  ~[primary-key.table:tab]
+    =/  query-key  primary-key.table:tab
     (add-tab name (delete:tab query-key where))
   ::
   ++  rename
@@ -103,36 +105,56 @@
   ++  q
     |=  =query
     ^-  (list row)
+    (get-rows:- +):(run-query query ~)
+  ::
+  ++  run-query
+    |=  [=query query-cols=(list column-name)]
+    ^-  [_tab (list column-name)]
     ::  here we make smart choices
-    =|  query-key=(list column-name)
-    =/  left-tab=_tab
-      (~(got by tables) table.query)
+    =/  [left-tab=_tab query-cols=(list column-name)]
+      ?@  table.query
+        [(~(got by tables) table.query) query-cols]
+      $(query table.query)
     ?+    -.query  ~|("unsupported query!" !!)
         %select
-      =?    query-key
-          ?=(~ query-key)
+      =?    query-cols
+          ?=(~ query-cols)
         ::  not smart yet..
-        ~[primary-key.table:left-tab]
-      (get-rows:(select:left-tab query-key where.query) query-key)
+        primary-key.table:left-tab
+      :-  (select:left-tab query-cols where.query)
+      query-cols
+    ::
+        %project
+      =?    query-cols
+          ?=(~ query-cols)
+        ::  not smart yet..
+        primary-key.table:left-tab
+      :-  (project:left-tab query-cols cols.query)
+      query-cols
     ::
         %theta-join
-      =?    query-key
-          ?=(~ query-key)
+      =?    query-cols
+          ?=(~ query-cols)
         ::  not smart yet..
-        ~[primary-key.table:left-tab]
+        primary-key.table:left-tab
       =/  right-tab=_tab
-        (~(got by tables) with.query)
+        ?@  with.query
+          (~(got by tables) with.query)
+        -:$(query with.query)
       =/  with=(pair schema (list row))
         :-  schema.table:right-tab
-        (get-rows:right-tab ~[primary-key.table:right-tab])
+        (get-rows:right-tab primary-key.table:right-tab)
       =/  new-key=key-type
-        :*  :+  (cat 3 'l-' primary-key.table:left-tab)
-              (cat 3 'r-' primary-key.table:right-tab)
-            ~
+        :*  %+  weld
+              %+  turn  primary-key.table:left-tab
+              |=(name=term (cat 3 'l-' name))
+            %+  turn  primary-key.table:right-tab
+            |=(name=term (cat 3 'r-' name))
             %.y  %.n  %.n  ::  important
         ==
-      =.  left-tab  (cross:left-tab query-key new-key with)
-      (get-rows:(select:left-tab cols.new-key where.query) cols.new-key)
+      =.  left-tab  (cross:left-tab query-cols new-key with)
+      :-  (select:left-tab cols.new-key where.query)
+      cols.new-key
     ==
   --
 ::
@@ -177,7 +199,7 @@
         %+  skim  ~(tap by indices.table)
         |=  [(list term) key-type]
         primary
-    ?>  &(primary unique):(~(got by indices.table) ~[primary-key.table])
+    ?>  &(primary unique):(~(got by indices.table) primary-key.table)
     ::
     ::  columns must be contiguous from 0
     ::  and have no overlap
@@ -214,7 +236,7 @@
     ^-  (list row)
     =?    at-key
         ?=(~ at-key)
-      ~[primary-key.table]
+      primary-key.table
     =/  rec=record  (~(got by records.table) at-key)
     ?:  ?=(%& -.rec)
       ~(val by p.rec)
@@ -238,7 +260,7 @@
     ^-  record
     =/  =key-type
       ?~  at-key
-        (~(got by indices.table) ~[primary-key.table])
+        (~(got by indices.table) primary-key.table)
       (~(got by indices.table) at-key)
     ?:  unique.key-type
       :-  %&
@@ -250,13 +272,18 @@
       %+  gas:((on key row) cmp)
       *((mop key row) cmp)  lis
     :-  %|
-    =/  spo=@  spot:(~(got by schema.table) primary-key.table)
+    =/  spots=(list @)
+      %+  turn  primary-key.table
+      |=  col=term
+      spot:(~(got by schema.table) col)
     ?.  clustered.key-type
       ::  mip
       =/  mi   *(mip key key row)
       |-
       ?~  lis  mi
-      =/  pri=key  ~[(snag spo row.i.lis)]
+      =/  pri=key
+        %+  turn  spots
+        |=(i=@ (snag i row.i.lis))
       $(lis t.lis, mi (~(put bi mi) key.i.lis pri row.i.lis))
     ::  mop-map
     =/  cmp  (ord:col at-key)
@@ -264,7 +291,9 @@
     =/  mop-map  *((mop key (map key row)) cmp)
     |-
     ?~  lis  mop-map
-    =/  pri=key  ~[(snag spo row.i.lis)]
+    =/  pri=key
+      %+  turn  spots
+      |=(i=@ (snag i row.i.lis))
     %=    $
         lis  t.lis
         mop-map
@@ -284,7 +313,7 @@
     ~>  %bout
     =?    at-key
         ?=(~ at-key)
-      ~[primary-key.table]
+      primary-key.table
     =/  rec=record  (~(got by records.table) at-key)
     =/  =key-type   (~(got by indices.table) at-key)
     ::  if we have a keyed record for our selector,
@@ -468,19 +497,26 @@
         ?>  !(has:m p.record key.i.lis)
         $(lis t.lis, p.record (put:m p.record i.lis))
       ?>  ?=(%| -.record)
-      =/  spo  spot:(~(got by schema.table) primary-key.table)
+      =/  spots=(list @)
+        %+  turn  primary-key.table
+        |=  col=term
+        spot:(~(got by schema.table) col)
       ?.  clustered.key-type
         ::  mip
         |-
         ?~  lis  record
-        =/  pri=key  ~[(snag spo row.i.lis)]
+        =/  pri=key
+          %+  turn  spots
+          |=(i=@ (snag i row.i.lis))
         $(lis t.lis, p.record (~(put bi p.record) key.i.lis pri row.i.lis))
       ::  mop-map
       =/  cmp  (ord:col name)
       =/  mm   ((on key (map key row)) cmp)
       |-
       ?~  lis  record
-      =/  pri=key  ~[(snag spo row.i.lis)]
+      =/  pri=key
+        %+  turn  spots
+        |=(i=@ (snag i row.i.lis))
       %=    $
           lis  t.lis
           p.record
@@ -560,7 +596,7 @@
     ~>  %bout
     =?    at-key
         ?=(~ at-key)
-      ~[primary-key.table]
+      primary-key.table
     =/  =key-type  (~(got by indices.table) at-key)
     =/  rec        (~(got by records.table) at-key)
     ?.  clustered.key-type
@@ -593,23 +629,34 @@
     |=  [at-key=(list term) cols=(list term)]
     ~&  >  "performing projection"
     ~>  %bout
-    ^-  (pair schema (list row))
     ::  need to iterate through all rows, so no need
     ::  to determine optimal record to pull from?
-    :-  %-  ~(gas by *(map term column-type))
-        =<  p
-        %^  spin  cols  0
-        |=  [=term i=@]
-        =/  col  (~(got by schema.table) term)
-        [[term col(spot i)] +(i)]
+    =/  new-schema
+      %-  ~(gas by *(map term column-type))
+      =<  p
+      %^  spin  cols  0
+      |=  [=term i=@]
+      =/  col  (~(got by schema.table) term)
+      [[term col(spot i)] +(i)]
+    ~|  "primary key columns must be retained in projection"
+    ?>  %+  levy  primary-key.table
+        |=  col=term
+        (~(has by new-schema) col)
     =/  is=(list @)
       %+  turn  cols
       |=  =term
       spot:(~(got by schema.table) term)
-    %+  turn  (get-rows at-key)
-    |=  =row
-    %+  turn  is
-    |=(i=@ (snag i row))
+    =/  lis=(list [key row])
+      %+  turn
+        (record-to-list (~(got by records.table) at-key))
+      |=  [=key =row]
+      :-  key
+      %+  turn  is
+      |=(i=@ (snag i row))
+    =.  schema.table  new-schema
+    =.  records.table
+      [at-key^(list-to-record at-key lis) ~ ~]
+    +>.$
   ::
   ::  cross-product: combinatorily join two records
   ::  places the result as a record -- you choose the key
@@ -641,8 +688,7 @@
       (snag spot:(~(got by schema.table) col) grow)
     =.  indices.table
       [cols.new-key^new-key ~ ~]
-    =.  primary-key.table
-      (head cols.new-key)
+    =.  primary-key.table  cols.new-key
     =.  records.table
       [cols.new-key^(list-to-record cols.new-key lis) ~ ~]
     +>.$
