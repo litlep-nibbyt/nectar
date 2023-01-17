@@ -12,7 +12,7 @@
 ::
 +$  table
   $:  =schema
-      primary-key=(list column-name)
+      primary-key=column-name
       =indices
       records=(map (list column-name) record)
   ==
@@ -22,7 +22,7 @@
 ::
 +$  key-type
   $:  cols=(list column-name)  ::  which columns included in key (at list position)
-      primary=?                ::  only one primary key per table (must be unique??)
+      primary=?                ::  only one primary key per table (must be unique!)
       unique=?                 ::  if not unique, store rows in list under key
       clustered=?              ::  uses col-ord -- if clustered,
   ==                           ::  must be *singular* column in key.
@@ -42,8 +42,8 @@
 ::
 +$  record
   %+  each
-    (tree [key row])       ::  unique key
-  (tree [key (list row)])  ::  non-unique key
+    (tree [key row])             ::  unique key
+  (tree [key (tree [key row])])  ::  non-unique key
 ::
 +$  key  (list value)
 +$  row  (list value)
@@ -80,11 +80,9 @@
   $-([value value] ?)
 ::
 +$  query
-  $%  [%select table=?(term query) where=condition]
-      [%project table=?(term query) cols=(set term)]
-      [%theta-join table=?(term query) with=?(term query) where=condition]
+  $%  [%select table=term where=condition]
+      [%project table=term cols=(set term)]
+      [%theta-join table=term with=term where=condition]
       [%table table=term ~]  ::  to avoid type-loop
   ==
-::
-+$  query-result  table  ::  TODO do better
 --
