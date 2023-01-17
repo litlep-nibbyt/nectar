@@ -3,32 +3,38 @@
 ::            database
 ::
 |%
+::  TODO:  external indices
+::  make index a separate object from table
+::  store them alongside tables
+::  be able to store indices for *other* tables
+::  (do after solid-state-publications)
+::  (use: find another table somewhere)
+::
 +$  table
-  $:  name=term
-      owner=term          ::  agent name
-      editors=(set term)  ::  owner-only by default
-      =schema
-      primary-key=(list term)
+  $:  =schema
+      primary-key=(list column-name)
       =indices
-      records=(map (list term) record)
+      records=(map (list column-name) record)
   ==
 ::
 +$  schema   (map term column-type)  ::  term is semantic label
-+$  indices  (map (list term) key-type)
++$  indices  (map (list column-name) key-type)
 ::
 +$  key-type
-  $:  cols=(list term)  ::  which columns included in key (at list position)
-      primary=?         ::  only one primary key per table (must be unique)
-      unique=?          ::  if not unique, store rows in list under key
-      clustered=(unit comparator)  ::  ordering function -- if clustered,
-  ==                               ::  must be *singular* column in key.
+  $:  cols=(list column-name)  ::  which columns included in key (at list position)
+      primary=?                ::  only one primary key per table (must be unique??)
+      unique=?                 ::  if not unique, store rows in list under key
+      clustered=?              ::  uses col-ord -- if clustered,
+  ==                           ::  must be *singular* column in key.
 ::
++$  column-name  term
 +$  column-type
   $:  spot=@      ::  where column sits in row
       optional=?  ::  if optional, value is unit
       $=  typ
-      $?  ::  just the basics, can add more atom annotations
-          %ud  %ux  %da  %t  %f
+      $?  %ud  %ux  %da  %f
+          %t   %ta  %tas
+          %rd  %rh  %rq  %rs  %s
           ::  more complex column types
           %list  %set  %map  %blob
       ==
@@ -48,19 +54,6 @@
       [%m (map value value)]  [%b *]
   ==  ==
 ::
-+$  query
-  $%  [%select table=?(term query) where=condition]
-      [%project table=?(term query) cols=(set term)]
-      [%insert table=?(term query) rows=(list row)]
-      [%delete table=?(term query) where=condition]
-      [%rename table=?(term query) old=term new=term]
-      [%cross-product table=?(term query) with=?(term query)]
-      [%union table=?(term query) with=?(term query)]
-      [%difference table=?(term query) with=?(term query)]
-      [%theta-join table=?(term query) with=?(term query) where=condition]
-      [%table table=term]  ::  to avoid type-loop
-  ==
-::
 +$  condition
   $~  [%n ~]
   $%  [%n ~]
@@ -71,20 +64,27 @@
   ==
 ::
 +$  selector
-  $%  [%eq @]   [%not @]
-      [%gte @]  [%lte @]
-      [%gth @]  [%lth @]
-      [%atom gat=$-(@ ?)]
-      [%unit gat=$-((unit @) ?)]
-      [%custom gat=$-(value ?)]
-  ==
+  ::  concrete or dynamic
+  %+  each
+    $%  [%eq @]   [%not @]
+        [%gte @]  [%lte @]
+        [%gth @]  [%lth @]
+        [%nul ~]
+    ==
+  $-(value ?)
 ::
 +$  comparator
-  $%  %eq   %not
-      %gte  %lte
-      %gth  %lth
-      [%atom gat=$-([@ @] ?)]
-      [%unit gat=$-([(unit @) (unit @)] ?)]
-      [%custom gat=$-([value value] ?)]
+  ::  concrete or dynamic
+  %+  each
+    ?(%eq %not %gte %gth %lte %lth)
+  $-([value value] ?)
+::
++$  query
+  $%  [%select table=?(term query) where=condition]
+      [%project table=?(term query) cols=(set term)]
+      [%theta-join table=?(term query) with=?(term query) where=condition]
+      [%table table=term ~]  ::  to avoid type-loop
   ==
+::
++$  query-result  table  ::  TODO do better
 --

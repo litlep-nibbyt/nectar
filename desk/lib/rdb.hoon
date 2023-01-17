@@ -2,10 +2,7 @@
 |%
 ++  users-table
   =/  =table
-    :*  name=%users
-        owner=%my-app
-        editors=(silt ~[%my-app])
-        ::  schema
+    :*  ::  schema
         %-  ~(gas by *(map term column-type))
         :~  [%id [0 | %ud]]
             [%name [1 | %t]]
@@ -16,8 +13,8 @@
         primary-key=~[%id]
         ::  indices
         %-  ~(gas by *(map (list term) key-type))
-        :~  [~[%id] [~[%id] %.y %.y `%gth]]
-            [~[%top-score] [~[%top-score] %.n %.n `%gth]]
+        :~  [~[%id] [~[%id] %.y %.y %.y]]
+            [~[%top-score] [~[%top-score] %.n %.n %.n]]
         ==
         ~
     ==
@@ -29,88 +26,134 @@
         ~[4 'christian' 1.500 500 [%l ~['ben']]]
         ~[5 'hocwyn' 1.200 1.400 [%l ~['ben']]]
     ==
-  =+  (~(create tab [table ~]) initial-data)
-  =+  (insert:- ~[~[6 'ben' 0 0 [%l ~]]])
-  =+  (insert:- ~[~[7 'tim' 0 0 [%l ~]]])
-  =+  (delete:- at-key=~[%id] where=[%s %id %eq 2])
-  =+  (select:- at-key=~[%top-score] [%s %top-score %lte 300])
-  (project:- at-key=~[%top-score] ~[%id %top-score %last-score])
-  ::  %+  cross:-  at-key=~[%top-score]
-  ::  :-  %-  ~(gas by *(map term column-type))
-  ::      :~  [%loach [0 | %ud]]
-  ::      ==
-  ::  :~  ~[8]  ~[9]  ~[10]
-  ::  ==
+  (~(create tab table) initial-data)
 ::
-++  bigger-table
+++  messages-table
   =/  =table
-    :*  name=%big
-        owner=%my-app
-        editors=(silt ~[%my-app])
-        ::  schema
+    :*  ::  schema
         %-  ~(gas by *(map term column-type))
-        :~  [%id [0 | %ud]]
-            [%rank [1 | %ud]]
+        :~  [%from [0 | %t]]
+            [%to [1 | %t]]
+            [%message [2 | %t]]
         ==
-        primary-key=~[%id]
+        primary-key=~[%from]
         ::  indices
         %-  ~(gas by *(map (list term) key-type))
-        :~  [~[%id] [~[%id] %.y %.y `%gth]]
-            [~[%rank] [~[%rank] %.n %.y `%lth]]
+        :~  [~[%from] [~[%from] %.y %.n %.n]]
         ==
         ~
     ==
   =/  initial-data=(list row)
-    %+  turn  (gulf 0 100.000)
-    |=  i=@
-    ~[i (mul 2 i)]
-  =+  (~(create tab [table ~]) initial-data)
-  =+  %+  select:-  at-key=~[%id]
-      [%and [%s %id %gte 5.000] [%s %rank %lte 10.020]]
-  (get-rows:- at-key=~[%id])
-::
-++  indirect-atom-table
-  =/  =table
-    :*  name=%big
-        owner=%my-app
-        editors=(silt ~[%my-app])
-        ::  schema
-        %-  ~(gas by *(map term column-type))
-        :~  [%id [0 | %ud]]
-            [%rank [1 | %ud]]
-        ==
-        primary-key=~[%id]
-        ::  indices
-        %-  ~(gas by *(map (list term) key-type))
-        :~  [~[%id] [~[%id] %.y %.y `%gth]]
-            [~[%rank] [~[%rank] %.n %.y `%lth]]
-        ==
-        ~
+    :~  ~['ben' 'nick' 'aaa']
+        ~['nick' 'ben' 'bbb']
+        ~['tim' 'drew' 'ccc']
+        ~['ben' 'nick' 'ddd']
+        ~['nick' 'ben' 'eee']
     ==
-  =/  initial-data=(list row)
-    %+  turn  (gulf 0 100.000)
-    |=  i=@
-    ~[(add i (bex 32)) (mul 2 i)]
-  =+  (~(create tab [table ~]) initial-data)
-  =+  %+  select:-  at-key=~[%id]
-      [%and [%s %id %gte (add 5.000 (bex 32))] [%s %rank %lte 10.020]]
-  (get-rows:- at-key=~[%id])
+  (~(create tab table) initial-data)
+::
+++  my-db
+  =+  ~(. database ~)
+  =+  (add-tab:- %users %me users-table)
+  (add-tab:- %messages %me messages-table)
+::
+++  my-query
+  =+  (insert:my-db %users %me ~[~[6 'ben' 0 0 [%l ~]]])
+  =+  (insert:- %users %me ~[~[7 'tim' 0 0 [%l ~]]])
+  =+  (delete:- %users %me where=[%s %id %& %eq 4])
+  ::  (run-query:- %me [%select %users where=[%s %id %& %gth 2]])
+  %+  run-query:-  %me
+  [%theta-join %users %messages where=[%d %l-name %&^%eq %r-from]]
+::
+::  database engine
+::
+++  database
+  =>  |%
+      +$  table-name  term
+      +$  owner       term
+      +$  tables  (map [table-name owner] _tab)
+      ::  stored procedures, computed views here
+      --
+  =|  =tables
+  |%
+  ++  add-tab
+    |=  [n=table-name o=owner tab=_tab]
+    +>.$(tables (~(put by tables) [n o] tab))
+  ::
+  ++  insert
+    |=  [n=table-name o=owner rows=(list row)]
+    =/  tab  (~(got by tables) [n o])
+    (add-tab n o (insert:tab rows))
+  ::
+  ++  delete
+    |=  [n=table-name o=owner where=condition]
+    =/  tab  (~(got by tables) [n o])
+    =/  query-key  primary-key.table:tab
+    (add-tab n o (delete:tab query-key where))
+  ::
+  ++  rename
+    !!  ::  TODO add to +tab
+  ::
+  ++  run-query
+    |=  [from=owner =query]
+    ::  here we make smart choices
+    =|  query-key=(list column-name)
+    =-  (get-rows:- query-key)
+    ^-  _tab
+    |-
+    =/  left-tab=_tab
+      ?@  table.query
+        (~(got by tables) [table.query from])
+      $(query table.query)
+    ?+    -.query  ~|("unsupported query!" !!)
+        %select
+      =?    query-key
+          ?=(~ query-key)
+        ::  not smart yet..
+        primary-key.table:left-tab
+      (select:left-tab query-key where.query)
+    ::
+        %theta-join
+      =?    query-key
+          ?=(~ query-key)
+        ::  not smart yet..
+        primary-key.table:left-tab
+      =/  right-tab=_tab
+        ?@  with.query
+          (~(got by tables) [with.query from])
+        $(query with.query)
+      =/  with=(pair schema (list row))
+        :-  schema.table:right-tab
+        (get-rows:right-tab primary-key.table:right-tab)
+      (theta-join:left-tab query-key cluster=%.y with where.query)
+    ==
+  --
 ::
 ::  table edit engine
 ::
 ++  tab
-  =>  |%
-      ++  comparators  (map term comparator2)
-      ++  comparator2  $_  |~  [* *]  ?
-      --
-  =|  [=table =comparators]
+  =|  =table
   |%
-  ::  TODO figure this out
-  ::  ++  add-comparator
-  ::    |=  [label=term cmp=comparator2]
-  ::    =.  comparators
-  ::      (~(put by comparators) label cmp)
-  ::    +>.$
+  ++  col
+    |%
+    ++  ord
+      |=  at-key=(list column-name)
+      ^-  $-([key key] ?)
+      ::  clustered indices must be keyed on single col
+      =/  =column-name  (head at-key)
+      =/  col=column-type
+        (~(got by schema.table) column-name)
+      |=  [a=key b=key]
+      ?>  &(?=([p=@ ~] a) ?=([p=@ ~] b))
+      ?+  typ.col  (lte i.a i.b)
+        %rd  (lte:rd i.a i.b)
+        %rh  (lte:rh i.a i.b)
+        %rq  (lte:rq i.a i.b)
+        %rs  (lte:rs i.a i.b)
+        %s   !=(--1 (cmp:si i.a i.b))
+        ?(%t %ta %tas)  (aor i.a i.b)
+      ==
+    --
   ::
   ++  create
     |=  rows=(list row)
@@ -121,14 +164,13 @@
     ::  destroys any existing records
     ::
     ::  can only have 1 primary key, must be the indicated one
-    ::  primary key must be unique
     ::
     ?>  .=  1
         %-  lent
         %+  skim  ~(tap by indices.table)
         |=  [(list term) key-type]
         primary
-    ?>  &(primary unique):(~(got by indices.table) primary-key.table)
+    ?>  primary:(~(got by indices.table) primary-key.table)
     ::
     ::  columns must be contiguous from 0
     ::  and have no overlap
@@ -144,9 +186,9 @@
     ::  make a record for each key
     ::
     =.  records.table
-      %-  ~(gas by *(map (list term) record))
+      %-  ~(gas by *(map (list column-name) record))
       %+  turn  ~(tap by indices.table)
-      |=  [name=(list term) key-type]
+      |=  [name=(list column-name) key-type]
       =/  lis=(list [=key =row])
         %+  turn  rows
         |=  =row
@@ -158,13 +200,10 @@
     ::  return modified tab core
     +>.$
   ::
-  ::  produces a list of rows as a "final result"
-  ::  for a query
+  ::  produces a list of rows from a record
   ::
   ++  get-rows
     |=  at-key=(list term)
-    ~&  >  "returning rows"
-    ~>  %bout
     ^-  (list row)
     =?    at-key
         ?=(~ at-key)
@@ -190,22 +229,22 @@
       (~(got by indices.table) at-key)
     ?:  unique.key-type
       :-  %&
-      ?~  clustered.key-type
+      ?.  clustered.key-type
         ::  map
         (~(gas by *(map key row)) lis)
       ::  mop
-      =/  cmp  (make-cluster-arm u.clustered.key-type)
+      =/  cmp  (ord:col at-key)
       %+  gas:((on key row) cmp)
       *((mop key row) cmp)  lis
     :-  %|
-    ?~  clustered.key-type
+    ?.  clustered.key-type
       ::  jar
       =/  jar  *(jar key row)
       |-
       ?~  lis  jar
       $(lis t.lis, jar (~(add ja jar) i.lis))
     ::  mop-jar
-    =/  cmp  (make-cluster-arm u.clustered.key-type)
+    =/  cmp  (ord:col at-key)
     =/  mj  ((on key (list row)) cmp)
     =/  mop-jar
       *((mop key (list row)) cmp)
@@ -256,77 +295,59 @@
       ::      - %gte, %lte, %gth, %lth
       ::        can be lotted from mop
       ?.  =(~[c.where] at-key)  (lis)
-      ?~  clustered.key-type
-        ?+    -.s.where
+      ?.  clustered.key-type
+        ?.  ?=(%& -.s.where)  (lis)
+        ?+    -.p.s.where
             (lis)
         ::
             %eq
           ?:  ?=(%& -.rec)
-            ?~  res=(~(get by p.rec) ~[+.s.where])
+            ?~  res=(~(get by p.rec) ~[+.p.s.where])
               %&^~
-            %&^[[~[+.s.where] u.res] ~ ~]
-          %|^[[~[+.s.where] (~(get ja p.rec) ~[+.s.where])] ~ ~]
+            %&^[[~[+.p.s.where] u.res] ~ ~]
+          %|^[[~[+.p.s.where] (~(get ja p.rec) ~[+.p.s.where])] ~ ~]
         ::
             %not
           ?:  ?=(%& -.rec)
-            %&^(~(del by `(map key row)`p.rec) ~[+.s.where])
-          %|^(~(del by `(map key (list row))`p.rec) ~[+.s.where])
+            %&^(~(del by `(map key row)`p.rec) ~[+.p.s.where])
+          %|^(~(del by `(map key (list row))`p.rec) ~[+.p.s.where])
         ==
-      =/  cmp  (make-cluster-arm u.clustered.key-type)
-      ?+    -.s.where
+      =/  cmp  (ord:col at-key)
+      ?.  ?=(%& -.s.where)  (lis)
+      ?+    -.p.s.where
           (lis)
       ::
           %eq
         ?:  ?=(%& -.rec)
           =/  m  ((on key row) cmp)
-          ?~  res=(get:m p.rec ~[+.s.where])
+          ?~  res=(get:m p.rec ~[+.p.s.where])
             %&^~
-          %&^[[~[+.s.where] u.res] ~ ~]
+          %&^[[~[+.p.s.where] u.res] ~ ~]
         =/  mj  ((on key (list row)) cmp)
-        %|^[[~[+.s.where] (get:mj p.rec ~[+.s.where])] ~ ~]
+        %|^[[~[+.p.s.where] (get:mj p.rec ~[+.p.s.where])] ~ ~]
       ::
           %not
         ?:  ?=(%& -.rec)
           =/  m  ((on key row) cmp)
-          %&^+:(del:m p.rec ~[+.s.where])
+          %&^+:(del:m p.rec ~[+.p.s.where])
         =/  mj  ((on key (list row)) cmp)
-        %|^+:(del:mj p.rec ~[+.s.where])
+        %|^+:(del:mj p.rec ~[+.p.s.where])
       ::
           ?(%gte %lte %gth %lth)
-        =/  m   ((on key row) cmp)
-        =/  mj  ((on key (list row)) cmp)
         ::  mop lot
-        ::  see which way mop is ordered (g or l)
-        ::  and combine that with our comparator
-        ::  to correctly slice the ordered map
-        ::  type information hates us here for some reason
-        ?:  ?=(?(%gte %gth) u.clustered.key-type)
-          ::  mop ordered large -> small
-          =/  lot-params
-            ?-  -.s.where
-              %gte  [~ `~[(dec +.s.where)]]
-              %gth  [~ `~[+.s.where]]
-              %lte  [`~[+(+.s.where)] ~]
-              %lth  [`~[+.s.where] ~]
-            ==
-          ?:  ?=(%& -.rec)
-            %&^(lot:m p.rec lot-params)
-          %|^(lot:mj p.rec lot-params)
-        ::
-        ?:  ?=(?(%lth %lth) u.clustered.key-type)
-          ::  mop ordered small -> large
-          =/  lot-params
-            ?-  -.s.where
-              %gte  [`~[(dec +.s.where)] ~]
-              %gth  [`~[+.s.where] ~]
-              %lte  [~ `~[+(+.s.where)]]
-              %lth  [~ `~[+.s.where]]
-            ==
-          ?:  ?=(%& -.rec)
-            %&^(lot:m p.rec lot-params)
-          %|^(lot:mj p.rec lot-params)
-        ::  default case
-        (lis)
+        ::  mop ordered small -> large
+        =/  lot-params
+          ?-  -.p.s.where
+            %gte  [`~[(dec +.p.s.where)] ~]
+            %gth  [`~[+.p.s.where] ~]
+            %lte  [~ `~[+(+.p.s.where)]]
+            %lth  [~ `~[+.p.s.where]]
+          ==
+        ?:  ?=(%& -.rec)
+          =/  m   ((on key row) cmp)
+          %&^(lot:m p.rec lot-params)
+        =/  mj  ((on key (list row)) cmp)
+        %|^(lot:mj p.rec lot-params)
       ==
     ::
         %d
@@ -358,7 +379,7 @@
       =/  rec2=record  $(where b.where)
       ::  merge two results
       ::  records will share clustered/unique status
-      ?~  clustered.key-type
+      ?.  clustered.key-type
         ?:  ?=(%& -.rec1)
           ?>  ?=(%& -.rec2)
           ::  map
@@ -366,7 +387,7 @@
         ?>  ?=(%| -.rec2)
         ::  jar
         %|^(uni-jar p.rec1 p.rec2)
-      =/  cmp  (make-cluster-arm u.clustered.key-type)
+      =/  cmp  (ord:col at-key)
       ?:  ?=(%& -.rec1)
         ?>  ?=(%& -.rec2)
         ::  mop
@@ -401,26 +422,30 @@
         (snag spot:(~(got by schema.table) col) row)
       ?:  unique.key-type
         ?>  ?=(%& -.record)
-        ?~  clustered.key-type
+        ?.  clustered.key-type
           ::  map
           |-
           ?~  lis  record
+          ~|  "non-unique key on insert"
+          ?>  !(~(has by p.record) key.i.lis)
           $(lis t.lis, p.record (~(put by p.record) i.lis))
         ::  mop
         ?>  ?=(%& -.record)
-        =/  cmp  (make-cluster-arm u.clustered.key-type)
+        =/  cmp  (ord:col name)
         =/  m    ((on key row) cmp)
         |-
         ?~  lis  record
+        ~|  "non-unique key on insert"
+        ?>  !(has:m p.record key.i.lis)
         $(lis t.lis, p.record (put:m p.record i.lis))
       ?>  ?=(%| -.record)
-      ?~  clustered.key-type
+      ?.  clustered.key-type
         ::  jar
         |-
         ?~  lis  record
         $(lis t.lis, p.record (~(add ja p.record) i.lis))
       ::  mop-jar
-      =/  cmp  (make-cluster-arm u.clustered.key-type)
+      =/  cmp  (ord:col name)
       =/  mj   ((on key (list row)) cmp)
       |-
       ?~  lis  record
@@ -446,7 +471,7 @@
       primary-key.table
     =/  =key-type  (~(got by indices.table) at-key)
     =/  rec        (~(got by records.table) at-key)
-    ?~  clustered.key-type
+    ?.  clustered.key-type
       =/  del  (~(got by records.table:(select at-key where)) at-key)
       ?:  ?=(%& -.rec)
         ?>  ?=(%& -.del)
@@ -495,27 +520,38 @@
     |=(i=@ (snag i row))
   ::
   ::  cross-product: combinatorily join two records
+  ::  places the result as a record -- you choose the key
   ::
   ++  cross
-    |=  [at-key=(list term) with=(pair schema (list row))]
+    |=  [at-key=(list term) new-key=key-type with=(pair schema (list row))]
     ~&  >  "performing cross-product"
     ~>  %bout
-    ^-  (pair schema (list row))
     =/  l  ~(wyt by schema.table)
-    :-  %-  ~(gas by *(map term column-type))
-        %+  weld
-          %+  turn  ~(tap by schema.table)
-          |=  [=term c=column-type]
-          [(cat 3 'l-' term) c]
-        %+  turn  ~(tap by p.with)
+    =.  schema.table
+      %-  ~(gas by *(map term column-type))
+      %+  weld
+        %+  turn  ~(tap by schema.table)
         |=  [=term c=column-type]
-        [(cat 3 'r-' term) c(spot (add spot.c l))]
-    %-  zing
-    %+  turn  (get-rows at-key)
-    |=  l=row
-    %+  turn  q.with
-    |=  r=row
-    (weld l r)
+        [(cat 3 'l-' term) c]
+      %+  turn  ~(tap by p.with)
+      |=  [=term c=column-type]
+      [(cat 3 'r-' term) c(spot (add spot.c l))]
+    =/  lis=(list [key row])
+      %-  zing
+      %+  turn  (get-rows at-key)
+      |=  l=row
+      %+  turn  q.with
+      |=  r=row
+      =/  grow=row  (weld l r)
+      :_  grow  ^-  key
+      %+  turn  cols.new-key
+      |=  col=column-name
+      (snag spot:(~(got by schema.table) col) grow)
+    =.  indices.table
+      [cols.new-key^new-key ~ ~]
+    =.  records.table
+      [cols.new-key^(list-to-record cols.new-key lis) ~ ~]
+    +>.$(primary-key.table cols.new-key)
   ::
   ::  union: concatenate two records
   ::
@@ -536,51 +572,21 @@
     %+  weld
       (get-rows at-key)
     q.with
+  ::
+  ::  theta-join: cross-product on two tables, then select
+  ::
+  ++  theta-join
+    |=  [at-key=(list term) cluster=? with=(pair schema (list row)) where=condition]
+    ~&  >  "performing theta-join"
+    ~>  %bout
+    =/  new-key=key-type
+      :^    (turn at-key |=(t=term (cat 3 'l-' t)))
+          primary=%.y
+        unique=%.n
+      clustered=cluster
+    =.  +>.$  (cross at-key new-key with)
+    (select cols.new-key where)
   --
-
-::       %difference
-::     ::  get the difference between two tables
-::     ::  TODO validation stuff, assumes matching schemae
-::     =/  with=^table
-::       ?@  with.q
-::         (~(got by tables.db) with.q)
-::       $(q with.q)
-::     :^    name.table
-::         schema.table
-::       primary-key.table
-::     %+  ~(put by records.table)  primary-key.table
-::     %-  ~(dif by (~(got by records.table) primary-key.table))
-::     (~(got by records.with) primary-key.with)
-::   ::
-::       %theta-join
-::     ::  cross-product on two tables then select
-::     $(q [%select [%cross-product table.q with.q] where.q])
-::   ==
-:: ::
-:: ++  valid-row
-::   |=  [sch=(list column) =row]
-::   ^-  ?
-::   ?>  =((lent sch) (lent row))
-::   |-
-::   ?~  row  %.y
-::   ?~  sch  %.y
-::   ?:  optional.i.sch
-::     ?.  ?=((unit @) i.row)  %.n
-::     $(row t.row, sch t.sch)
-::   ?:  ?=(?(%ud %ux %da %t %f) column-type.i.sch)
-::     ?.  ?=(@ i.row)  %.n
-::     $(row t.row, sch t.sch)
-::   =/  sof
-::     %-  soft
-::     ?-  column-type.i.sch
-::       %list  (list value)
-::       %set   (set value)
-::       %map   (map value value)
-::       %blob  *
-::     ==
-::   ?~  (sof +.i.row)  %.n
-::   ?.  =(-.i.row column-type.i.sch)  %.n
-::   $(row t.row, sch t.sch)
 ::
 ++  apply-condition
   |=  [=schema cond=condition =row]
@@ -607,64 +613,35 @@
   ==
 ::
 ++  apply-selector
-  |=  [=selector =value]
+  |=  [=selector a=value]
   ^-  ?
-  ?:  ?=(%custom -.selector)
-    (gat.selector value)
-  ?:  ?=(%unit -.selector)
-    ?>  ?=((unit @) value)
-    (gat.selector value)
-  ?>  ?=(@ value)
-  ?-  -.selector
-    %eq    =(value +.selector)
-    %not   !=(value +.selector)
-    %gte   (gte value +.selector)
-    %lte   (lte value +.selector)
-    %gth   (gth value +.selector)
-    %lth   (lth value +.selector)
-    %atom  (gat.selector value)
+  ?.  ?=(%& -.selector)
+    (p.selector a)
+  ?>  ?=(@ a)
+  ?-  -.p.selector
+    %eq    =(a +.p.selector)
+    %not   !=(a +.p.selector)
+    %gte   (gte a +.p.selector)
+    %lte   (lte a +.p.selector)
+    %gth   (gth a +.p.selector)
+    %lth   (lth a +.p.selector)
+    %nul   =(~ a)
   ==
 ::
 ++  apply-comparator
   |=  [=comparator a=value b=value]
   ^-  ?
-  ?@  comparator
-    ?>  &(?=(@ a) ?=(@ b))
-    ?-  comparator
-      %eq    =(a b)
-      %not   !=(a b)
-      %gte   (gte a b)
-      %lte   (lte a b)
-      %gth   (gth a b)
-      %lth   (lth a b)
-    ==
-  ?:  ?=(%custom -.comparator)
-    (gat.comparator a b)
-  ?:  ?=(%unit -.comparator)
-    ?>  ?=((unit @) a)
-    ?>  ?=((unit @) b)
-    (gat.comparator a b)
+  ?.  ?=(%& -.comparator)
+    (p.comparator a b)
   ?>  &(?=(@ a) ?=(@ b))
-  (gat.comparator a b)
-::
-++  make-cluster-arm
-  |=  =comparator
-  ^-  $-([key key] ?)
-  ?@  comparator
-    |=  [k1=key k2=key]
-    =+  a=(head k1)
-    =+  b=(head k2)
-    ?>  &(?=(@ a) ?=(@ b))
-    ?-  comparator
-      %eq   !!
-      %not  !!
-      %gte  (gte a b)
-      %lte  (lte a b)
-      %gth  (gth a b)
-      %lth  (lth a b)
-    ==
-  ::  not currently handling custom comparators
-  !!
+  ?-  p.comparator
+    %eq    =(a b)
+    %not   !=(a b)
+    %gte   (gte a b)
+    %lte   (lte a b)
+    %gth   (gth a b)
+    %lth   (lth a b)
+  ==
 ::
 ::  missing jar utils
 ::
