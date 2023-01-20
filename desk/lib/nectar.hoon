@@ -1,97 +1,48 @@
-/-  *rdb
+/-  *nectar
 /+  *mip
 |%
-++  users-table
-  =/  =table
-    :*  ::  schema
-        %-  ~(gas by *(map term column-type))
-        :~  [%id [0 | %ud]]
-            [%name [1 | %t]]
-            [%top-score [2 | %ud]]
-            [%last-score [3 | %ud]]
-            [%frens [4 | %list]]
-        ==
-        primary-key=~[%id]
-        ::  indices
-        %-  ~(gas by *(map (list term) key-type))
-        :~  [~[%id] [~[%id] %.y %.y %.y]]
-            [~[%top-score] [~[%top-score] %.n %.n %.n]]
-        ==
-        ~
-    ==
-  =/  initial-data=(list row)
-    :~  ~[0 'nick' 100 400 [%l ~['ben']]]
-        ~[1 'drew' 300 100 [%l ~['ben' 'nick']]]
-        ~[2 'will' 300 1.000 [%l ~['ben']]]
-        ~[3 'tobias' 1.000 300 [%l ~['ben']]]
-        ~[4 'christian' 1.500 500 [%l ~['ben']]]
-        ~[5 'hocwyn' 1.200 1.400 [%l ~['ben']]]
-    ==
-  (~(create tab table) initial-data)
 ::
-++  messages-table
-  =/  =table
-    :*  ::  schema
-        %-  ~(gas by *(map term column-type))
-        :~  [%uuid [0 | %ud]]
-            [%from [1 | %t]]
-            [%to [2 | %t]]
-            [%message [3 | %t]]
-        ==
-        primary-key=~[%uuid]
-        ::  indices
-        %-  ~(gas by *(map (list term) key-type))
-        :~  [~[%uuid] [~[%uuid] %.y %.y %.n]]
-            [~[%from] [~[%from] %.n %.n %.y]]
-        ==
-        ~
-    ==
-  =/  initial-data=(list row)
-    :~  ~[0 'ben' 'nick' 'hi']
-        ~[1 'nick' 'ben' 'hello']
-        ~[2 'tim' 'drew' 'yo']
-    ==
-  (~(create tab table) initial-data)
+::  helpers
 ::
-++  my-db
-  =+  ~(. database ~)
-  =+  (add-tab:- %users users-table)
-  (add-tab:- %messages messages-table)
+++  make-schema
+  |=  lis=(list [term column-type])
+  ^-  schema
+  (~(gas by *schema) lis)
 ::
-+$  my-row-type
-  [user-id=@ msg-uuid=@ top-score=@ud from=@t msg=@t ~]
-::
-++  my-query
-  =+  (insert:my-db %users ~[~[6 'ben' 0 0 [%l ~]]])
-  =+  (insert:- %users ~[~[7 'tim' 0 0 [%l ~]]])
-  =+  (delete:- %users where=[%s %id %& %eq 4])
-  ::  (q:- [%select %users where=[%s %id %& %gth 2]])
-  %+  turn
-    %-  q:-
-    :+  %project
-      [%theta-join %users %messages where=[%d %l-name %&^%eq %r-from]]
-    `(list term)`~[%l-id %r-uuid %l-top-score %r-from %r-message]
-  |=  =row
-  !<(my-row-type [-:!>(*my-row-type) row])
+++  make-indices
+  |=  lis=(list key-type)
+  ^-  indices
+  %-  ~(gas by *indices)
+  %+  turn  lis
+  |=  =key-type
+  [cols.key-type key-type]
 ::
 ::  database engine
 ::
 ++  database
   =>  |%
-      +$  table-name  term
+      +$  table-name  @
       +$  tables  (map table-name _tab)
       ::  stored procedures, computed views here
       --
   =|  =tables
   |%
-  ++  add-tab
-    |=  [name=table-name tab=_tab]
-    +>.$(tables (~(put by tables) name tab))
+  ++  add-table
+    |=  [name=table-name =table]
+    ?:  (~(has by tables) name)
+      ~|("nectar: table with that id already exists" !!)
+    =+  (~(create tab table) ~)
+    +>.$(tables (~(put by tables) name -))
   ::
   ++  insert
     |=  [name=table-name rows=(list row)]
     =/  tab  (~(got by tables) name)
-    (add-tab name (insert:tab rows))
+    (add-tab name (insert:tab rows update=%.n))
+  ::
+  ++  update
+    |=  [name=table-name rows=(list row)]
+    =/  tab  (~(got by tables) name)
+    (add-tab name (insert:tab rows update=%.y))
   ::
   ++  delete
     |=  [name=table-name where=condition]
@@ -101,6 +52,11 @@
   ::
   ++  rename
     !!  ::  TODO add to +tab
+  ::
+  ++  add-tab
+    |=  [name=table-name tab=_tab]
+    ::  asdf
+    +>.$(tables (~(put by tables) name tab))
   ::
   ++  q
     |=  =query
@@ -150,7 +106,7 @@
               |=(name=term (cat 3 'l-' name))
             %+  turn  primary-key.table:right-tab
             |=(name=term (cat 3 'r-' name))
-            %.y  %.n  %.n  ::  important
+            %.y  ~  %.n  %.n  ::  important
         ==
       =.  left-tab  (cross:left-tab query-cols new-key with)
       :-  (select:left-tab cols.new-key where.query)
@@ -186,8 +142,8 @@
   ::
   ++  create
     |=  rows=(list row)
-    ~&  >  "making table"
-    ~>  %bout
+    ::  ~&  >  "%nectar: making table"
+    ::  ~>  %bout
     ::
     ::  build a new table
     ::  destroys any existing records
@@ -211,6 +167,14 @@
           |=  [term column-type]
           spot
         lth
+    ::
+    ::  clustered and/or autoincremented indices must have singular key column
+    ::
+    ?>  %-  ~(all by indices.table)
+        |=  key-type
+        ?.  |(clustered ?=(^ autoincrement))
+          %.y
+        =(1 (lent cols))
     ::
     ::  make a record for each key
     ::
@@ -309,8 +273,8 @@
   ::
   ++  select
     |=  [at-key=(list term) where=condition]
-    ~&  >  "performing select"
-    ~>  %bout
+    ::  ~&  >  "%nectar: performing select"
+    ::  ~>  %bout
     =?    at-key
         ?=(~ at-key)
       primary-key.table
@@ -404,6 +368,36 @@
         ::  mop-map
         =/  mm  ((on key (map key row)) cmp)
         %|^(lot:mm p.rec lot-params)
+      ::
+          %top
+        ::  get top n items in clustered index
+        ?:  ?=(%& -.rec)
+          ::  mop
+          =/  m   ((on key row) cmp)
+          =+  i=0
+          =|  res=(list [key row])
+          |-
+          ?:  |((gth i n.p.s.where) =(~ p.rec))
+            %&^(gas:m *((mop key row) cmp) res)
+          =+  pried=(pry:m p.rec)
+          $(i +(i), res [+.pried res], p.rec -.pried)
+        ::  mop-map
+        !!
+      ::
+          %bottom
+        ::  get bottom n items in clustered index
+        ?:  ?=(%& -.rec)
+          ::  mop
+          =/  m   ((on key row) cmp)
+          =+  i=0
+          =|  res=(list [key row])
+          |-
+          ?:  |((gth i n.p.s.where) =(~ p.rec))
+            %&^(gas:m *((mop key row) cmp) res)
+          =+  rammed=(ram:m p.rec)
+          $(i +(i), res [+.rammed res], p.rec -.rammed)
+        ::  mop-map
+        !!
       ==
     ::
         %d
@@ -464,9 +458,9 @@
   ::  produces a new table with rows inserted across all records
   ::
   ++  insert
-    |=  rows=(list row)
-    ~&  >  "performing insert"
-    ~>  %bout
+    |=  [rows=(list row) update=?]
+    ::  ~&  >  "%nectar: performing insert/update"
+    ::  ~>  %bout
     =.  records.table
       %-  ~(rut by records.table)
       |=  [name=(list term) =record]
@@ -484,8 +478,10 @@
           ::  map
           |-
           ?~  lis  record
-          ~|  "non-unique key on insert"
-          ?>  !(~(has by p.record) key.i.lis)
+          ?:  (~(has by p.record) key.i.lis)
+            ?.  update
+              ~|("non-unique key on insert" !!)
+            $(lis t.lis, p.record (~(put by p.record) i.lis))
           $(lis t.lis, p.record (~(put by p.record) i.lis))
         ::  mop
         ?>  ?=(%& -.record)
@@ -494,9 +490,15 @@
         |-
         ?~  lis  record
         ~|  "non-unique key on insert"
-        ?>  !(has:m p.record key.i.lis)
+        ?:  (has:m p.record key.i.lis)
+          ?.  update
+            ~|("non-unique key on insert" !!)
+          $(lis t.lis, p.record (put:m p.record i.lis))
         $(lis t.lis, p.record (put:m p.record i.lis))
       ?>  ?=(%| -.record)
+      ::  for non-unique records, primary key
+      ::  uniqueness is enforced by inserting to
+      ::  guaranteed-unique map/mop elsewhere
       =/  spots=(list @)
         %+  turn  primary-key.table
         |=  col=term
@@ -526,65 +528,6 @@
       ==
     +>.$
   ::
-  ::  almost identical to insert, except we check non-unique
-  ::  indices for matches using primary key so as not to get
-  ::  lots of duplicates over time
-  :: ::
-  :: ++  update
-  ::   |=  rows=(list row)
-  ::   ~&  >  "performing update"
-  ::   ~>  %bout
-  ::   =.  records.table
-  ::     %-  ~(rut by records.table)
-  ::     |=  [name=(list term) =record]
-  ::     =/  =key-type  (~(got by indices.table) name)
-  ::     =/  lis=(list [=key =row])
-  ::       %+  turn  rows
-  ::       |=  =row
-  ::       :_  row  ^-  key
-  ::       %+  turn  cols.key-type
-  ::       |=  col=term
-  ::       (snag spot:(~(got by schema.table) col) row)
-  ::     ?:  unique.key-type
-  ::       ?>  ?=(%& -.record)
-  ::       ?.  clustered.key-type
-  ::         ::  map
-  ::         |-
-  ::         ?~  lis  record
-  ::         $(lis t.lis, p.record (~(put by p.record) i.lis))
-  ::       ::  mop
-  ::       ?>  ?=(%& -.record)
-  ::       =/  cmp  (ord:col name)
-  ::       =/  m    ((on key row) cmp)
-  ::       |-
-  ::       ?~  lis  record
-  ::       $(lis t.lis, p.record (put:m p.record i.lis))
-  ::     ?>  ?=(%| -.record)
-  ::     ::  for non-unique records, *must* check primary key
-  ::     ::  for match and delete if so.
-  ::     ?.  clustered.key-type
-  ::       ::  jar
-  ::       |-
-  ::       ?~  lis  record
-  ::       =/  pri=key
-  ::         %+  snag
-  ::           spot:(~(got by schema.table) primary-key.table)
-  ::         row.i.lis
-
-  ::       $(lis t.lis, p.record (~(add ja p.record) i.lis))
-  ::     ::  mop-jar
-  ::     =/  cmp  (ord:col name)
-  ::     =/  mj   ((on key (list row)) cmp)
-  ::     |-
-  ::     ?~  lis  record
-  ::     %=    $
-  ::         lis  t.lis
-  ::         p.record
-  ::       =+  (get:mj p.record key.i.lis)
-  ::       (put:mj p.record key.i.lis [row.i.lis -])
-  ::     ==
-  ::   +>.$
-  :: ::
   ::  produces a new table with rows meeting the condition
   ::  deleted across all records. after deleting records,
   ::  needs to rebuild all secondary indices, so deletes
@@ -592,8 +535,8 @@
   ::
   ++  delete
     |=  [at-key=(list term) where=condition]
-    ~&  >  "performing delete"
-    ~>  %bout
+    ::  ~&  >  "%nectar: performing delete"
+    ::  ~>  %bout
     =?    at-key
         ?=(~ at-key)
       primary-key.table
@@ -627,8 +570,8 @@
   ::
   ++  project
     |=  [at-key=(list term) cols=(list term)]
-    ~&  >  "performing projection"
-    ~>  %bout
+    ::  ~&  >  "%nectar: performing projection"
+    ::  ~>  %bout
     ::  need to iterate through all rows, so no need
     ::  to determine optimal record to pull from?
     =/  new-schema
@@ -663,8 +606,8 @@
   ::
   ++  cross
     |=  [at-key=(list term) new-key=key-type with=(pair schema (list row))]
-    ~&  >  "performing cross-product"
-    ~>  %bout
+    ::  ~&  >  "%nectar: performing cross-product"
+    ::  ~>  %bout
     =/  l  ~(wyt by schema.table)
     =.  schema.table
       %-  ~(gas by *(map term column-type))
@@ -697,8 +640,8 @@
   ::
   ++  union
     |=  [at-key=(list term) with=(pair schema (list row))]
-    ~&  >  "performing union"
-    ~>  %bout
+    ::  ~&  >  "%nectar: performing union"
+    ::  ~>  %bout
     ^-  (pair schema (list row))
     =/  l  ~(wyt by schema.table)
     ::  unlike cross-product, if two columns in schemae
@@ -752,6 +695,7 @@
     %gth   (gth a +.p.selector)
     %lth   (lth a +.p.selector)
     %nul   =(~ a)
+    ?(%top %bottom)  ~|("%nectar: applied invalid selector" !!)
   ==
 ::
 ++  apply-comparator
