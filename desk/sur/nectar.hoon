@@ -58,8 +58,8 @@
 +$  value
   $@  @
   $?  (unit @)
-  $%  [%l (list value)]       [%s (set value)]
-      [%m (map value value)]  [%b *]
+  $%  [%l p=(list value)]       [%s p=(set value)]
+      [%m p=(map value value)]  [%b p=*]
   ==  ==
 ::
 +$  condition
@@ -94,6 +94,9 @@
   $%  [%select table=?(@ query) where=condition]
       [%project table=?(@ query) cols=(list term)]
       [%theta-join table=?(@ query) with=?(@ query) where=condition]
+      [%update table=@ where=condition cols=(list [=term func=mod-func])]
       [%table table=@ ~]  ::  to avoid type-loop
   ==
+::
++$  mod-func  $-(value value)
 --
