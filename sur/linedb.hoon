@@ -27,9 +27,9 @@
 +$  doc       ((mop line-num line) lth)
 +$  doc-name  path
 ::
-+$  diff  [=doc-name =line-num =line]
++$  diff      [=doc-name =line-num =line]
 ::
-+$  snapshot     (map doc-name doc)
++$  snapshot  (map doc-name doc)
 ::
 +$  commit
   $:  author=ship
@@ -43,5 +43,5 @@
   ==
 ::
 ++  doc-on    ((on line-num line) lth)
-++  snap-on  ((on index commit) lth)
+++  snap-on   ((on index commit) lth)
 --
