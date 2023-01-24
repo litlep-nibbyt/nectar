@@ -1,52 +1,32 @@
 /-  *linedb
 |%
-++  repository
-  =|  =repo
+++  branch
+  =|  [snaps=((mop index commit) lth) head=index]
   |%
-  ++  add-branch
-    |=  [new=name parent=(unit name)]
-    ^+  repository
-    =.  parents.repo
-      (~(put by parents.repo) new parent)
-    ?~  parent
-      +>.$(branches.repo (~(put by branches.repo) new [~ 0]))
-    =+  (~(got by branches.repo) u.parent)
-    +>.$(branches.repo (~(put by branches.repo) new -))
   ::
   ++  add-commit
-    |=  [on-branch=name author=ship diffs=(list diff)]
-    ^+  repository
-    %=    +>.$
-        branches.repo
-      %+  ~(jab by branches.repo)  on-branch
-      |=  =branch
-      =/  =commit
-        :+  author
-          %+  build-snapshot
-            ?:  =(0 head.branch)  ~
-            snapshot:(got:snap-on [snaps head]:branch)
-          diffs
+    |=  [author=ship diffs=(list diff)]
+    ^+  branch
+    =/  =commit
+      :+  author
+        %+  build-snapshot
+          ?:  =(0 head)  ~
+          snapshot:(got:snap-on snaps head)
         diffs
-      %=  branch
-        head   +(head.branch)
-        snaps  (put:snap-on snaps.branch +(head.branch) commit)
-      ==
+      diffs
+    %=  +>.$
+      head   +(head)
+      snaps  (put:snap-on snaps +(head) commit)
     ==
   ::
   ::  do stuff like revert by setting head backwards
   ::
   ++  set-head
-    |=  [on-branch=name new-head=@ud]
-    ^+  repository
-    %=    +>.$
-        branches.repo
-      %+  ~(jab by branches.repo)
-        on-branch
-      |=  =branch
-      ::  enforce that head can't go beyond highest index
-      ?>  (has:snap-on snaps.branch new-head)
-      branch(head new-head)
-    ==
+    |=  new-head=@ud
+    ^+  branch
+    ::  enforce that head can't go beyond highest index
+    ?>  (has:snap-on snaps new-head)
+    +>.$(head new-head)
   ::
   ::  construct new snapshot from old snapshot + list of diffs
   ::
@@ -72,10 +52,9 @@
   ::  given a branch and doc, gets that doc
   ::
   ++  read-doc
-    |=  [on-branch=name =doc-name]
+    |=  [=doc-name]
     ^-  cord
-    =/  =branch  (~(got by branches.repo) on-branch)
-    =+  snapshot:(got:snap-on [snaps head]:branch)
+    =+  snapshot:(got:snap-on snaps head)
     %-  of-wain:format
     (turn (tap:doc-on (~(got by -) doc-name)) tail)
   --

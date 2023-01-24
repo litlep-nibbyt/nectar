@@ -2,8 +2,7 @@
 ::  snapshots are full document sets with all lines
 ::  structural sharing makes this efficient
 ::
-::  a repo holds branches and their hierarchy
-::  each branch is an ordered history of snapshots
+::  a branch is an ordered history of snapshots
 ::
 ::  make a new branch by selecting an existing one to go off
 ::  can make a branch with no parent that starts empty?
@@ -24,14 +23,14 @@
 ::
 +$  line      cord
 +$  line-num  @ud
++$  index     @ud
 +$  doc       ((mop line-num line) lth)
-++  doc-on    ((on line-num line) lth)
 +$  doc-name  path
 ::
-+$  snapshot     (map doc-name doc)
-+$  index        @ud
++$  diff  [=doc-name =line-num =line]
 ::
-+$  diff      [=doc-name =line-num =line]
++$  snapshot     (map doc-name doc)
+::
 +$  commit
   $:  author=ship
       =snapshot
@@ -42,12 +41,7 @@
   $:  snaps=((mop index commit) lth)
       head=index
   ==
-++  snap-on  ((on index commit) lth)
-+$  name     term
 ::
-+$  repo
-  $:  branches=(map name branch)
-      master=name
-      parents=(map child=name parent=(unit name))
-  ==
+++  doc-on    ((on line-num line) lth)
+++  snap-on  ((on index commit) lth)
 --
