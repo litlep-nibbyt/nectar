@@ -55,6 +55,7 @@
   ++  handle-edit
     |=  =edit:g
     ^-  (quip card _graph)
+    ?>  =(our src):bowl
     ::  need this info in bowl for perms
     =/  =app:g  p.edit
     ?-    -.q.edit
@@ -85,7 +86,7 @@
         ==
       =/  =tag:g
         ?:  ?=([@ ~] t.t.t.t.t.path)
-          `@tas`i.t.t.t.t.t.path
+          `@t`i.t.t.t.t.t.path
         t.t.t.t.t.path
       =-  ``noun+!>(`(set node:g)`-)
       (get-nodes:graph node app `tag)

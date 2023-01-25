@@ -48,7 +48,7 @@
   ==
 ::
 +$  app   term          ::  TODO: is this enough??
-+$  tag   ?(term path)  ::  fully qualified scry path
++$  tag   ?(@t path)  ::  fully qualified scry path
 ::
 +$  node
   $%  [%ship @p]
