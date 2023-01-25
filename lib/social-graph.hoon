@@ -37,6 +37,16 @@
 ::  TODO: flesh out an example case for a globally-attested edge and build
 ::  ability to handle that into edge/app/tag definitions
 ::
+::
+::  !! need USERSPACE PERMS to make this right !!
+::
++$  edit
+  %+  pair  term  ::  the app poking us, for now
+  $%  [%add-tag from=node to=node =tag]
+      [%del-tag from=node to=node =tag]
+      [%nuke-tag =tag]
+  ==
+::
 +$  app   term          ::  TODO: is this enough??
 +$  tag   ?(term path)  ::  fully qualified scry path
 ::
@@ -143,9 +153,9 @@
       (~(del by edge) app)
     +>.$(edges (~(del by edges) app))
   ::
-  ::  remove all tags on all edges within a particular app
+  ::  remove a tag on all edges within a particular app
   ::
-  ++  nuke-tags
+  ++  nuke-tag
     |=  [=app =tag]
     ^+  social-graph
     =.  nodes
