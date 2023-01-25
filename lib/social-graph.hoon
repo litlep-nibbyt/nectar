@@ -37,13 +37,13 @@
 ::  TODO: flesh out an example case for a globally-attested edge and build
 ::  ability to handle that into edge/app/tag definitions
 ::
-+$  app   term       ::  TODO: is this enough??
-+$  tag   term
++$  app   term          ::  TODO: is this enough??
++$  tag   ?(term path)  ::  fully qualified scry path
 ::
 +$  node
   $%  [%ship @p]
       [%address @ux]
-      [%entity path]
+      [%entity term]    ::  TODO
   ==
 ::
 +$  edge  (jug app tag)
@@ -74,7 +74,7 @@
       (~(get ju (~(gut bi edges) app u.tag *nodeset)) from)
     ::  =<  q
     %-  ~(rep by (~(gut by edges) app ~))
-    |=  [n=[@ nodeset] res=(set node)]
+    |=  [n=[^tag nodeset] res=(set node)]
     (~(uni in res) (~(get ju +.n) from))
   ::
   ::  receive edge associated with a specific node->node
@@ -85,12 +85,21 @@
     (~(get gi nodes) from to)
   ::
   ::  receive set of tags associated with a node->node edge
-  ::  under a specific app
+  ::  under a specific app. returns ~ if no app at edge
   ::
   ++  get-app
     |=  [from=node to=node =app]
-    ^-  (set tag)
-    (~(get ju (~(gut gi nodes) from to ~)) app)
+    ^-  (unit (set tag))
+    ?^  ap=(~(get gi nodes) from to)
+      `(~(get ju u.ap) app)
+    ~
+  ::
+  ::  see if a given relationship exists
+  ::
+  ++  has-tag
+    |=  [from=node to=node =app =tag]
+    ^-  ?
+    (~(has ju (~(gut gi nodes) from to ~)) app tag)
   ::
   ::  see whether a specific tag is bidirectional or not
   ::
@@ -136,7 +145,7 @@
   ::
   ::  remove all tags on all edges within a particular app
   ::
-  ++  nuke-tag
+  ++  nuke-tags
     |=  [=app =tag]
     ^+  social-graph
     =.  nodes
