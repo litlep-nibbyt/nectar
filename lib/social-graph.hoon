@@ -1,3 +1,4 @@
+/-  *social-graph
 /+  *mip
 |%
 ::
@@ -38,26 +39,9 @@
 ::  ability to handle that into edge/app/tag definitions
 ::
 ::
-::  !! need USERSPACE PERMS to make this right !!
-::
-+$  edit
-  %+  pair  term  ::  the app poking us, for now
-  $%  [%add-tag from=node to=node =tag]
-      [%del-tag from=node to=node =tag]
-      [%nuke-tag =tag]
-  ==
-::
-+$  app   term          ::  TODO: is this enough??
-+$  tag   ?(@t path)  ::  fully qualified scry path
-::
-+$  node
-  $%  [%ship @p]
-      [%address @ux]
-      [%entity term]    ::  TODO
-  ==
-::
-+$  edge  (jug app tag)
-+$  nodeset  (jug node node)
+::  WHY ON EARTH does this get superceded by +edge in hoon.hoon if it's
+::  imported as opposed to put right here????????????????
++$  edge     (jug app tag)
 ::
 ++  graph               ::  adjacency set
   |$  [node edge]
@@ -86,6 +70,13 @@
     %-  ~(rep by (~(gut by edges) app ~))
     |=  [n=[^tag nodeset] res=(set node)]
     (~(uni in res) (~(get ju +.n) from))
+  ::
+  ::  receive all node-node relations under app+tag
+  ::
+  ++  get-nodeset
+    |=  [=app =tag]
+    ^-  nodeset
+    (~(gut by (~(gut by edges) app ~)) tag ~)
   ::
   ::  receive edge associated with a specific node->node
   ::
@@ -173,8 +164,8 @@
     |=  [from=node to=node =app =tag]
     ^+  social-graph
     =.  nodes
-      =-  (~(put gi nodes) from to `edge`-)
-      (~(put ju (~(gut gi nodes) from to *edge)) app tag)
+      =-  (~(put gi nodes) from to -)
+      (~(put ju (~(gut gi nodes) from to ~)) app tag)
     =.  edges
       =-  (~(put bi edges) app tag `nodeset`-)
       (~(put ju (~(gut bi edges) app tag *nodeset)) from to)
@@ -193,5 +184,31 @@
       =-  (~(put bi edges) app tag `nodeset`-)
       (~(del ju (~(gut bi edges) app tag *nodeset)) from to)
     +>.$
+  ::
+  ::  replace our own nodeset for a given app+tag
+  ::
+  ++  replace-nodeset
+    |=  [=nodeset =app =tag]
+    ^+  social-graph
+    ::  first nuke tag for clean slate
+    =.  nodes
+      %-  ~(run by nodes)
+      |=  m=(map node edge)
+      %-  ~(run by m)
+      |=  =edge
+      (~(del ju edge) app tag)
+    =/  nl=(list [node node])
+      %-  zing
+      %+  turn  ~(tap by nodeset)
+      |=  [n1=node ns=(set node)]
+      %+  turn  ~(tap in ns)
+      |=  n2=node
+      [n1 n2]
+    =.  nodes
+      |-
+      ?~  nl  nodes
+      =+  (~(put ju (~(gut gi nodes) -.i.nl +.i.nl ~)) app tag)
+      $(nl t.nl, nodes (~(put gi nodes) -.i.nl +.i.nl -))
+    +>.$(edges (~(put bi edges) app tag nodeset))
   --
 --
