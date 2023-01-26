@@ -211,4 +211,17 @@
       $(nl t.nl, nodes (~(put gi nodes) -.i.nl +.i.nl -))
     +>.$(edges (~(put bi edges) app tag nodeset))
   --
+::
+::  pleasant helper function
+::
+++  in-nodeset
+  |=  [no=node ns=nodeset]
+  ^-  ?
+  =-  (~(has in -) no)
+  ^-  (set node)
+  %-  ~(uni in ~(key by ns))
+  ^-  (set node)
+  %-  ~(rep by ns)
+  |=  [p=[node (set node)] q=(set node)]
+  (~(uni in q) +.p)
 --

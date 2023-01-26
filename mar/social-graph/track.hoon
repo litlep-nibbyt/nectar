@@ -2,11 +2,11 @@
 |_  =track:g
 ++  grab
   |%
-  ++  noun  track
+  ++  noun  track:g
   --
 ++  grow
   |%
-  ++  noun  track:g
+  ++  noun  track
   --
 ++  grad  %noun
 --

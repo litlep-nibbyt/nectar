@@ -7,7 +7,7 @@
 +$  state
   $:  graph=_social-graph:g
       perms=(map app:g permission-level:g)
-      trackers=(map app:g (jug tag:g dock))  ::  TODO make SSS
+      trackers=(map app:g (jug tag:g dock))  ::  docks who are tracking us
       tracking=(map [app:g tag:g] @p)        ::  tags we're tracking from others
   ==
 +$  card  card:agent:gall
@@ -52,7 +52,31 @@
       [cards this]
     ::
     ++  on-peek   handle-scry:hc
-    ++  on-agent  on-agent:def
+    ::
+    ++  on-agent
+      |=  [=wire =sign:agent:gall]
+      ^-  (quip card _this)
+      ?+    wire  `this
+          [%give-update @ @ ^]
+        ::  /give-update/[app]/[q.dock]/[tag]
+        ?.  ?=(%poke-ack -.sign)  `this
+        ?~  p.sign  `this
+        ::  if we've received a nack from an update poke,
+        ::  remove that tracker so we don't keep poking them?
+        ::  they might have stopped tracking off us without
+        ::  giving a %leave poke...
+        =/  =app:g  `@tas`i.t.wire
+        =/  =dock  [src.bowl `@tas`i.t.t.wire]
+        =/  =tag:g
+          ?:  ?=([@ ~] t.t.t.wire)
+            `@t`i.t.t.t.wire
+          t.t.t.wire
+        ::  hideous, i know
+        =+  (~(del in (~(gut by (~(gut by trackers.state) app ~)) tag ~)) dock)
+        =+  (~(put by (~(gut by trackers.state) app ~)) tag `(set ^dock)`-)
+        `this(trackers.state (~(put by trackers.state) app -))
+      ==
+    ::
     ++  on-watch  on-watch:def
     ++  on-arvo   on-arvo:def
     ++  on-leave  on-leave:def
@@ -98,17 +122,10 @@
           %+  ~(put by trackers.state)  app
           %-  ~(urn by my-trackers)
           |=  [k=tag:g v=(set dock)]
-          =/  =nodeset:g  (~(gut by my-app) k ~)
-          =/  allowed=(set node:g)
-            %-  ~(uni in ~(key by nodeset))
-            ^-  (set node:g)
-            %-  ~(rep by nodeset)
-            |=  [p=[node:g (set node:g)] q=(set node:g)]
-            (~(uni in q) +.p)
           %-  ~(gas in *(set dock))
           %+  skim  ~(tap in v)
           |=  [p=@p term]
-          (~(has in allowed) [%ship p])
+          (in-nodeset:g [%ship p] (~(gut by my-app) k ~))
         ==
       `state(perms (~(put by perms.state) app level.q.edit))
     ::
@@ -127,12 +144,42 @@
         :-  [app tag.q.edit]^[%all ~]
         (nuke-tag:graph.state app tag.q.edit)
       ==
+    ::  if a deleted tag is of a tracker, must remove that tracker
+    =?    trackers.state
+        ?=(%del-tag -.q.edit)
+      =/  =nodeset:g  (get-nodeset:graph.state app tag.q.edit)
+      =/  tag-jug=(jug tag:g dock)  (~(gut by trackers.state) app ~)
+      =-  %+  ~(put by trackers.state)  app
+          (~(put by tag-jug) tag.q.edit -)
+      ::  replacing entire set of docks at tag!
+      %-  ~(gas in *(set dock))
+      %+  skip  ~(tap in (~(gut by tag-jug) tag.q.edit ~))
+      |=  =dock
+      ?.  ?|  &(?=(%ship -.from.q.edit) =(p.dock +.from.q.edit))
+              &(?=(%ship -.to.q.edit) =(p.dock +.to.q.edit))
+          ==
+        ::  this dock is not involved in del, no need
+        %.n
+      ::  this dock *was* involved, make sure it's still in nodeset
+      !(in-nodeset:g [%ship p.dock] nodeset)
+    ::
     =/  docks=(set dock)
-      (~(gut by (~(gut by trackers.state) app ~)) tag=-.+.q.edit ~)
+      %+  ~(gut by (~(gut by trackers.state) app ~))
+        ::  hoon type refinement is BROKEN BROKEN BROKEN LOL
+        ?-  -.q.edit
+          %add-tag   tag.q.edit
+          %del-tag   tag.q.edit
+          %nuke-tag  tag.q.edit
+        ==
+      ~
     :_  state
     %+  turn  ~(tap in docks)
     |=  =dock
-    %+  ~(poke pass:io /give-update)
+    =/  =path
+      ?:  ?=(@t -.+.q.edit)
+        /give-update/[app]/[q.dock]/[-.+.q.edit]
+      [%give-update app q.dock -.+.q.edit]
+    %+  ~(poke pass:io path)
     dock  social-graph-update+!>(`update:g`update)
   ::
   ++  handle-tracker
@@ -159,8 +206,11 @@
       =+  (~(put ju (~(gut by trackers.state) app ~)) tag dock)
       :_  state(trackers (~(put by trackers.state) app -))
       :_  ~
-      %+  ~(poke pass:io /give-update)
-        dock
+      =/  =path
+        ?:  ?=(@t tag.q.track)
+          /give-update/[app]/[q.dock]/[tag.q.track]
+        [%give-update app q.dock tag.q.track]
+      %+  ~(poke pass:io path)  dock
       =+  (get-nodeset:graph.state [app tag])
       social-graph-update+!>(`update:g`[app tag]^[%all -])
     ::
@@ -201,10 +251,17 @@
     =/  docks=(set dock)
       (~(gut by (~(gut by trackers.state) app.p.update ~)) tag.p.update ~)
     :_  state
-    %+  turn  ~(tap in docks)
+    %+  murn  ~(tap in docks)
     |=  =dock
-    %+  ~(poke pass:io /give-update)
-    dock  social-graph-update+!>(`update:g`update)
+    =/  =path
+      ?:  ?=(@t tag.p.update)
+        /give-update/[app.p.update]/[q.dock]/[tag.p.update]
+      [%give-update app.p.update q.dock tag.p.update]
+    ::  don't get caught in infinite loops!
+    ?:  =([our.bowl %social-graph] dock)  ~
+    :-  ~
+    %+  ~(poke pass:io path)  dock
+    social-graph-update+!>(`update:g`update)
   ::
   ++  handle-scry
     |=  =path

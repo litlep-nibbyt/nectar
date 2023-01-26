@@ -1,12 +1,12 @@
 /+  g=social-graph
-|_  =result:g
+|_  =graph-result:g
 ++  grab
   |%
-  ++  noun  result
+  ++  noun  graph-result:g
   --
 ++  grow
   |%
-  ++  noun  result:g
+  ++  noun  graph-result
   --
 ++  grad  %noun
 --

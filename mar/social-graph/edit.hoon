@@ -2,11 +2,11 @@
 |_  =edit:g
 ++  grab
   |%
-  ++  noun  edit
+  ++  noun  edit:g
   --
 ++  grow
   |%
-  ++  noun  edit:g
+  ++  noun  edit
   --
 ++  grad  %noun
 --
