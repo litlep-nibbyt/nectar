@@ -8,12 +8,13 @@
   $:  graph=_social-graph:g
       perms=(map app:g permission-level:g)
       trackers=(map app:g (jug tag:g dock))  ::  TODO make SSS
-      tracking=(map @p (jug app:g tag:g))  ::  tags we're tracking from others
+      tracking=(map [app:g tag:g] @p)        ::  tags we're tracking from others
   ==
 +$  card  card:agent:gall
 ::
 ::  scry paths
 ::
+::  /controller/[app]/[tag]  <-  returns @p of who we source a tag from
 ::  /nodes/[app]/[from-node]/[tag]  <-  returns (set node)
 ::  TODO /edge/[from-node]/[to-node]     <-  returns (unit edge)
 ::  TODO /app/[app]/[from-node]/[to-node]      <-  returns (unit (set tag))
@@ -68,18 +69,14 @@
     ?:  ?=(%start-tracking -.q.edit)
       ::  we want to sync a tag from another ship's app
       ::  note this will wipe our own representation of this tag
-      :_  =-  state(tracking (~(put by tracking.state) source.q.edit -))
-          %-  ~(put ju (~(gut by tracking.state) source.q.edit ~))
-          [app tag]:q.edit
+      :_  state(tracking (~(put by tracking.state) [[app tag] source]:q.edit))
       :_  ~
       %+  ~(poke pass:io /start-tracking)
         [source.q.edit %social-graph]
       social-graph-track+!>(`track:g`[%social-graph [%fetch [app tag]:q.edit]])
     ?:  ?=(%stop-tracking -.q.edit)
       ::  we want to STOP syncing a tag from another ship's app
-      :_  =-  state(tracking (~(put by tracking.state) source.q.edit -))
-          %-  ~(del ju (~(gut by tracking.state) source.q.edit ~))
-          [app tag]:q.edit
+      :_  state(tracking (~(del by tracking.state) [app tag]:q.edit))
       :_  ~
       %+  ~(poke pass:io /start-tracking)
         [source.q.edit %social-graph]
@@ -186,7 +183,7 @@
     ^-  (quip card _state)
     ::  first assert that we are actually tracking updates from them
     ::  their update may *only* modify the app+tag we're tracking
-    ?>  (~(has ju (~(gut by tracking.state) src.bowl ~)) p.update)
+    ?>  =(src.bowl (~(got by tracking.state) p.update))
     ::  incorporate update into our personal graph
     ::  and don't forget to forward the update to those
     ::  who might be tracking from *us*!
@@ -214,6 +211,16 @@
     ^-  (unit (unit cage))
     ?+    path
       ~|("unexpected scry into {<dap.bowl>} on path {<path>}" !!)
+        [%x %controller @ ^]
+      ::  /controller/[app]/[tag]
+      =/  =app:g  `@tas`i.t.t.path
+      =/  =tag:g
+        ?:  ?=([@ ~] t.t.t.path)
+          `@t`i.t.t.t.path
+        t.t.t.path
+      =+  (~(gut by tracking.state) [app tag] our.bowl)
+      ``social-graph-result+!>(`graph-result:g`[%controller -])
+    ::
         [%x %nodes @ @ @ ^]
       ::  /nodes/[app]/[from-node]/[tag]
       =/  =app:g  `@tas`i.t.t.path
@@ -228,8 +235,8 @@
         ?:  ?=([@ ~] t.t.t.t.t.path)
           `@t`i.t.t.t.t.t.path
         t.t.t.t.t.path
-      =-  ``noun+!>(`(set node:g)`-)
-      (get-nodes:graph.state node app `tag)
+      =+  (get-nodes:graph.state node app `tag)
+      ``social-graph-result+!>(`graph-result:g`[%nodes -])
     ::
         [%x %nodes @ @ @ ~]
       ::  /nodes/[app]/[from-node]
@@ -241,7 +248,7 @@
           %address  [- (slav %ux i.t.t.t.t.path)]
           %entity   [- `@tas`i.t.t.t.t.path]
         ==
-      =-  ``noun+!>(`(set node:g)`-)
-      (get-nodes:graph.state node app ~)
+      =+  (get-nodes:graph.state node app ~)
+      ``social-graph-result+!>(`graph-result:g`[%nodes -])
     ==
 --

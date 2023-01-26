@@ -1,4 +1,24 @@
 |%
++$  app   term        ::  TODO: is this enough??
++$  tag   ?(@t path)  ::  fully qualified scry path
+::
++$  node
+  $%  [%ship @p]
+      [%address @ux]
+      [%entity term]    ::  TODO
+  ==
+::
++$  edge     (jug app tag)
++$  nodeset  (jug node node)
+::
+::  permissions are app-level: the app uses %set-perms to say whether
+::  - %private: only our ship can track tags in our app's graph
+::  - %public: anyone can track tags in our app's graph
+::  - %only-tagged: only ships that *have* the tag can track it.
+::
++$  permission-level
+  $~  %private
+  ?(%private %public %only-tagged)
 ::
 ::  !! need USERSPACE PERMS to make this right !!
 ::
@@ -13,15 +33,6 @@
       [%start-tracking source=@p =app =tag]
       [%stop-tracking source=@p =app =tag]
   ==
-::
-::  permissions are app-level: the app uses %set-perms to say whether
-::  - %private: only our ship can track tags in our app's graph
-::  - %public: anyone can track tags in our app's graph
-::  - %only-tagged: only ships that *have* the tag can track it.
-::
-+$  permission-level
-  $~  %private
-  ?(%private %public %only-tagged)
 ::
 ::  poke with this to indicate that you want to get pushed updates
 ::
@@ -39,15 +50,9 @@
       [%gone-tag from=node to=node]  ::  from a %track poke
   ==
 ::
-+$  app   term        ::  TODO: is this enough??
-+$  tag   ?(@t path)  ::  fully qualified scry path
-::
-+$  node
-  $%  [%ship @p]
-      [%address @ux]
-      [%entity term]    ::  TODO
++$  graph-result  ::  comes out of scries
+  $%  [%controller @p]
+      [%nodes (set node)]
+      [%edge (unit edge)]
   ==
-::
-+$  edge     (jug app tag)
-+$  nodeset  (jug node node)
 --
