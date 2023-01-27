@@ -431,8 +431,11 @@
         ::  mop lot
         ::  mop ordered small -> large
         =/  lot-params
-          ?-  -.p.s.where
-            %gte  [`~[(dec +.p.s.where)] ~]
+          ?-    -.p.s.where
+              %gte
+            ?:  =(0 +.p.s.where)  [~ ~]
+            [`~[(dec +.p.s.where)] ~]
+          ::
             %gth  [`~[+.p.s.where] ~]
             %lte  [~ `~[+(+.p.s.where)]]
             %lth  [~ `~[+.p.s.where]]
@@ -447,6 +450,7 @@
       ::
           %top
         ::  get top n items in clustered index
+        ::  TODO performance comparison with different strategies
         ?:  ?=(%& -.rec)
           ::  mop
           =/  m   ((on key row) cmp)
@@ -455,16 +459,19 @@
           |-
           ?:  |((gth i n.p.s.where) =(~ p.rec))
             %&^(gas:m *((mop key row) cmp) res)
-          =+  pried=(pry:m p.rec)
-          $(i +(i), res [+.pried res], p.rec -.pried)
+          =+  popped=(pop:m p.rec)
+          $(i +(i), res [-.popped res], p.rec +.popped)
         ::  mop-map
         ~|("nectar: unsupported query TODO" !!)
       ::
           %bottom
         ::  get bottom n items in clustered index
+        ::  TODO BROKEN!!! FOR n > 1
         ?:  ?=(%& -.rec)
           ::  mop
           =/  m   ((on key row) cmp)
+          ?:  !=(1 n.p.s.where)
+            ~|("nectar: unsupported query TODO" !!)
           =+  i=0
           =|  res=(list [key row])
           |-
