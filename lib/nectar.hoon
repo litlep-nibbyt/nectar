@@ -21,9 +21,8 @@
 ::
 ++  database
   =>  |%
-      +$  table-name  @
       +$  tables  (map table-name _tab)
-      ::  stored procedures, computed views here
+      ::  stored procedures, computed views here..?
       --
   =|  =tables
   |%
@@ -32,17 +31,17 @@
   ::  this is the only external arm you should use?
   ::
   ++  q
-    |=  =query
+    |=  [app=@tas =query]
     ^-  (quip row _database)
     ?+  -.query
-      [(get-rows:- +):(run-query query ~) +>.$]
+      [(get-rows:- +):(run-query app query ~) +>.$]
     ::
-      %update  `(update query)
-      %insert  `(insert-rows table.query rows.query)
-      %delete  `(delete table.query where.query)
-      %add-table  `(add-table name.query actual.query)
-      %rename-table  `(rename-table old.query new.query)
-      %drop-table  `(drop-table name.query)
+      %update        `(update app query)
+      %insert        `(insert-rows app^table.query rows.query)
+      %delete        `(delete app^table.query where.query)
+      %add-table     `(add-table app^name.query actual.query)
+      %rename-table  `(rename-table app^old.query app^new.query)
+      %drop-table    `(drop-table app^name.query)
     ==
   ::
   ++  add-table
@@ -90,23 +89,23 @@
     +>.$(tables (~(put by tables) name tab))
   ::
   ++  update
-    |=  =query
+    |=  [app=@tas =query]
     ^+  database
     ?>  ?=(%update -.query)
-    =/  tab=_tab  (~(got by tables) table.query)
+    =/  tab=_tab  (~(got by tables) app^table.query)
     =-  +>.$(tables -)
-    %+  ~(put by tables)  table.query
+    %+  ~(put by tables)  app^table.query
     (update:tab primary-key.table:tab where.query cols.query)
   ::
   ::  run a NON-MUTATING query and get a list of rows as a result
   ::
   ++  run-query
-    |=  [=query query-cols=(list column-name)]
+    |=  [app=@tas =query query-cols=(list column-name)]
     ^-  [_tab (list column-name)]
     ?>  ?=(?(%select %project %theta-join) -.query)
     =/  [left-tab=_tab query-cols=(list column-name)]
       ?@  table.query
-        [(~(got by tables) table.query) query-cols]
+        [(~(got by tables) app^table.query) query-cols]
       $(query table.query)
     ::  here we make smart choices
     ::  we can inspect the query to see what index might be the most useful
@@ -148,7 +147,7 @@
         primary-key.table:left-tab
       =/  right-tab=_tab
         ?@  with.query
-          (~(got by tables) with.query)
+          (~(got by tables) app^with.query)
         -:$(query with.query)
       =/  with=(pair schema (list row))
         :-  schema.table:right-tab
