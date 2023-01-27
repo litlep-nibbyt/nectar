@@ -458,7 +458,7 @@
           =+  pried=(pry:m p.rec)
           $(i +(i), res [+.pried res], p.rec -.pried)
         ::  mop-map
-        !!
+        ~|("nectar: unsupported query TODO" !!)
       ::
           %bottom
         ::  get bottom n items in clustered index
@@ -473,7 +473,7 @@
           =+  rammed=(ram:m p.rec)
           $(i +(i), res [+.rammed res], p.rec -.rammed)
         ::  mop-map
-        !!
+        ~|("nectar: unsupported query TODO" !!)
       ==
     ::
         %d
@@ -513,7 +513,7 @@
         ?>  ?=(%| -.rec2)
         ::  mip  TODO
         ::  %|^(uni-mip p.rec1 p.rec2)
-        !!
+        ~|("nectar: unsupported query TODO" !!)
       =/  cmp  (ord:col at-key)
       ?:  ?=(%& -.rec1)
         ?>  ?=(%& -.rec2)
@@ -523,7 +523,7 @@
       ?>  ?=(%| -.rec2)
       ::  mop-map  TODO
       ::  %|^(uni-mop-map p.rec1 p.rec2 cmp)
-      !!
+      ~|("nectar: unsupported query TODO" !!)
     ::
         %and
       ::  clauses applied sequentially to one record
@@ -627,7 +627,7 @@
       ?>  ?=(%| -.del)
       ::  mip
       ::  %|^(dif-jar p.rec p.del)
-      !!
+      ~|("nectar: unsupported query TODO" !!)
     ::  for mop, rather than defer to select,
     ::  need to perform logical comparison by key and delete
     ::  or if an un-indexed column, must skim list
