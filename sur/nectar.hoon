@@ -3,6 +3,8 @@
 ::            database
 ::
 |%
+::  need name of app poking to be in bowl! for now, this:
++$  query-poke  [app=@tas =query]
 ::
 +$  table-name  [app=@tas label=@]
 ::

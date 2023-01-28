@@ -6,6 +6,7 @@
 +$  state
   $:  db=_database:n
   ==
+::
 +$  card  card:agent:gall
 --
 ::
@@ -32,7 +33,7 @@
       ^-  (quip card _this)
       =^  cards  state
         ?+  mark  (on-poke:def mark vase)
-          %nectar-query  (handle-query:hc !<(query:n vase))
+          %nectar-query  (handle-query:hc !<(query-poke:n vase))
         ==
       [cards this]
     ::
@@ -46,14 +47,21 @@
 ::
 |_  bowl=bowl:gall
   ++  handle-query
-    |=  =query:n
+    |=  =query-poke:n
     ^-  (quip card _state)
-    ::  queries from poke are assumed to be stateful,
     ::  modify the table with results
-    !!
+    `state(db +:(q:db.state query-poke))
   ::
   ++  handle-scry
     |=  =path
     ^-  (unit (unit cage))
+    ::  use this for stateless queries
+    ::
+    ::  TODO: how do we perform a query from a scry-path?
+    ::  we need to produce a query somehow... need to either
+    ::  - coax it out of path (gross)
+    ::  - store the query with a poke and call by name (okay)
+    ::  - ???
+    ::
     !!
 --
