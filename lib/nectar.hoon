@@ -22,7 +22,6 @@
 ++  database
   =>  |%
       +$  tables  (map table-name _tab)
-      ::  stored procedures, computed views here..?
       --
   =|  =tables
   |%
@@ -42,6 +41,7 @@
       %add-table     `(add-table app^name.query actual.query)
       %rename-table  `(rename-table app^old.query app^new.query)
       %drop-table    `(drop-table app^name.query)
+      %update-rows   `(update-rows app^table.query rows.query)
     ==
   ::
   ++  add-table

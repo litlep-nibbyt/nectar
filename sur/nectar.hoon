@@ -4,7 +4,8 @@
 ::
 |%
 ::  need name of app poking to be in bowl! for now, this:
-+$  query-poke  [app=@tas =query]
++$  query-poke      [app=@tas =query]
++$  procedure-poke  [app=@tas label=@tas =stored-procedure]
 ::
 +$  table-name  [app=@tas label=@]
 ::
@@ -103,6 +104,7 @@
       [%project table=?(@ query) cols=(list term)]
       [%theta-join table=?(@ query) with=?(@ query) where=condition]
       [%update table=@ where=condition cols=(list [=term func=mod-func])]
+      [%update-rows table=@ rows=(list *)]
       [%insert table=@ rows=(list *)]
       [%delete table=@ where=condition]
       [%add-table name=@ actual=table]
@@ -115,4 +117,7 @@
   ==
 ::
 +$  mod-func  $-(value value)
+::
++$  stored-procedure
+  (pair (list [aura axis]) query)
 --
