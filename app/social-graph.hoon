@@ -268,6 +268,8 @@
     ^-  (unit (unit cage))
     ?+    path
       ~|("unexpected scry into {<dap.bowl>} on path {<path>}" !!)
+        [%x %is-installed ~]
+      ``json+!>(`json`[%b &])
         [%x %controller @ ^]
       ::  /controller/[app]/[tag]
       =/  =app:g  `@tas`i.t.t.path
