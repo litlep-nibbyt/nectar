@@ -46,7 +46,7 @@
   $:  spot=@      ::  where column sits in row
       optional=?  ::  if optional, value is unit
       $=  typ
-      $?  %ud  %ux  %da  %f  %p
+      $?  %ud  %ux  %da  %dr  %f  %p
           %t   %ta  %tas
           %rd  %rh  %rq  %rs  %s
           ::  more complex column types
