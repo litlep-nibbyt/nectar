@@ -4,8 +4,9 @@
 ::
 ::  %social-graph agent state
 ::
-+$  state
-  $:  graph=_social-graph:g
++$  state-0
+  $:  %0
+      graph=social-graph:g
       perms=(map app:g permission-level:g)
       trackers=(map app:g (jug tag:g dock))  ::  docks who are tracking us
       tracking=(map [app:g tag:g] @p)        ::  tags we're tracking from others
@@ -23,25 +24,26 @@
 --
 ::
 ^-  agent:gall
-%+  verb  &
+%+  verb  |
 %-  agent:dbug
-=|  =state
+=|  state=state-0
 =<  |_  =bowl:gall
     +*  this  .
         hc    ~(. +> bowl)
         def   ~(. (default-agent this %|) bowl)
     ::
-    ++  on-init  `this(state [*_social-graph:g ~ ~ ~])
+    ++  on-init  `this(state [%0 *social-graph:g ~ ~ ~])
     ::
     ++  on-save  !>(state)
     ::
     ++  on-load
-      |=  =vase
+      |=  old=vase
       ^-  (quip card _this)
-      =/  old=(unit ^state)
-        (mole |.(!<(^state vase)))
-      ?~  old  on-init
-      `this(state u.old)
+      ::  nuke our state if it's of an unsupported version
+      ::  note that table schemas can change without causing a state change
+      ?+  -.q.old  on-init
+        %0  `this(state !<(state-0 old))
+      ==
     ::
     ++  on-poke
       |=  [=mark =vase]
@@ -139,18 +141,18 @@
         ::  type refinement in hoon is broken.
           %add-tag
         :-  [app tag.q.edit]^[%new-tag [from to]:q.edit]
-        (add-tag:graph.state from.q.edit to.q.edit app tag.q.edit)
+        (~(add-tag sg:g graph.state) from.q.edit to.q.edit app tag.q.edit)
           %del-tag
         :-  [app tag.q.edit]^[%gone-tag [from to]:q.edit]
-        (del-tag:graph.state from.q.edit to.q.edit app tag.q.edit)
+        (~(del-tag sg:g graph.state) from.q.edit to.q.edit app tag.q.edit)
           %nuke-tag
         :-  [app tag.q.edit]^[%all ~]
-        (nuke-tag:graph.state app tag.q.edit)
+        (~(nuke-tag sg:g graph.state) app tag.q.edit)
       ==
     ::  if a deleted tag is of a tracker, must remove that tracker
     =?    trackers.state
         ?=(%del-tag -.q.edit)
-      =/  =nodeset:g  (get-nodeset:graph.state app tag.q.edit)
+      =/  =nodeset:g  (~(get-nodeset sg:g graph.state) app tag.q.edit)
       =/  tag-jug=(jug tag:g dock)  (~(gut by trackers.state) app ~)
       =-  %+  ~(put by trackers.state)  app
           (~(put by tag-jug) tag.q.edit -)
@@ -194,7 +196,7 @@
           %public   %.y
             %only-tagged
           ::  src.bowl must appear in nodeset under this app+tag
-          =/  =nodeset:g  (get-nodeset:graph.state [app tag]:q.track)
+          =/  =nodeset:g  (~(get-nodeset sg:g graph.state) [app tag]:q.track)
           ?:  (~(has by nodeset) [%ship src.bowl])  %.y
           %-  ~(any by nodeset)
           |=  n=(set node:g)
@@ -214,7 +216,7 @@
           /give-update/[app]/[q.dock]/[tag.q.track]
         [%give-update app q.dock tag.q.track]
       %+  ~(poke pass:io path)  dock
-      =+  (get-nodeset:graph.state [app tag])
+      =+  (~(get-nodeset sg:g graph.state) app tag)
       social-graph-update+!>(`update:g`[app tag]^[%all -])
     ::
         %track
@@ -243,13 +245,13 @@
     =.  graph.state
       ?-  -.q.update
           %all
-        (replace-nodeset:graph.state nodeset.q.update p.update)
+        (~(replace-nodeset sg:g graph.state) nodeset.q.update p.update)
       ::
           %new-tag
-        (add-tag:graph.state from.q.update to.q.update p.update)
+        (~(add-tag sg:g graph.state) from.q.update to.q.update p.update)
       ::
           %gone-tag
-        (del-tag:graph.state from.q.update to.q.update p.update)
+        (~(del-tag sg:g graph.state) from.q.update to.q.update p.update)
       ==
     =/  docks=(set dock)
       (~(gut by (~(gut by trackers.state) app.p.update ~)) tag.p.update ~)
@@ -297,7 +299,7 @@
         ?:  ?=([@ ~] t.t.t.t.t.path)
           `@t`i.t.t.t.t.t.path
         t.t.t.t.t.path
-      =+  (get-nodes:graph.state node app `tag)
+      =+  (~(get-nodes sg:g graph.state) node app `tag)
       ``social-graph-result+!>(`graph-result:g`[%nodes -])
     ::
         [%x %nodes @ @ @ ~]
@@ -310,7 +312,7 @@
           %address  [- (slav %ux i.t.t.t.t.path)]
           %entity   [- `@tas`i.t.t.t.t.path]
         ==
-      =+  (get-nodes:graph.state node app ~)
+      =+  (~(get-nodes sg:g graph.state) node app ~)
       ``social-graph-result+!>(`graph-result:g`[%nodes -])
     ==
 --

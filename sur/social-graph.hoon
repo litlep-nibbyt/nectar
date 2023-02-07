@@ -1,4 +1,15 @@
+/+  mip
 |%
++$  social-graph        ::  note that both `nodes` and `edges` store exactly
+  $:  =nodes            ::  the same data. the sg core updates them
+      =edges            ::  in tandem, for querying performance.
+  ==
+::
+::  two representations of same data for performant queries
+::
++$  nodes  (mip:mip node node edge)
++$  edges  (mip:mip app tag nodeset)
+::
 +$  app   term        ::  TODO: is this enough??
 +$  tag   ?(@t path)  ::  fully qualified scry path
 ::

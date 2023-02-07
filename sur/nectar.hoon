@@ -3,6 +3,7 @@
 ::            database
 ::
 |%
++$  database  (map table-name table)
 ::  need name of app poking to be in bowl! for now, this:
 +$  query-poke      [app=@tas =query]
 +$  procedure-poke  [app=@tas label=@tas =stored-procedure]

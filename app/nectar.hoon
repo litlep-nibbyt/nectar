@@ -3,8 +3,9 @@
 ::
 ::  agent state
 ::
-+$  state
-  $:  db=_database:n
++$  state-0
+  $:  %0
+      =database:n
       ::  keyed by app, then label
       stored-procedures=(mip term term stored-procedure:n)
   ==
@@ -13,9 +14,9 @@
 --
 ::
 ^-  agent:gall
-%+  verb  &
+%+  verb  |
 %-  agent:dbug
-=|  =state
+=|  state=state-0
 =<  |_  =bowl:gall
     +*  this  .
         hc    ~(. +> bowl)
@@ -26,12 +27,13 @@
     ++  on-save  !>(state)
     ::
     ++  on-load
-      |=  =vase
+      |=  old=vase
       ^-  (quip card _this)
-      =/  old=(unit ^state)
-        (mole |.(!<(^state vase)))
-      ?~  old  on-init
-      `this(state u.old)
+      ::  nuke our state if it's of an unsupported version
+      ::  note that table schemas can change without causing a state change
+      ?+  -.q.old  on-init
+        %0  `this(state !<(state-0 old))
+      ==
     ::
     ++  on-poke
       |=  [=mark =vase]
@@ -63,7 +65,7 @@
                 %update-rows
             ==
         -.query-poke
-    `state(db +:(q:db.state query-poke))
+    `state(database +:(~(q db:n database.state) query-poke))
   ::
   ++  handle-proc
     |=  pp=procedure-poke:n
@@ -102,7 +104,7 @@
       ::  perform query and return result
       ~&  >  "your query: "
       ~&  >  q.proc
-      ``noun+!>(`(list row:n)`-:(q:db.state app q.proc))
+      ``noun+!>(`(list row:n)`-:(~(q db:n database.state) app q.proc))
     ::
         [%x %custom-query @ @ ~]
       =/  app=@tas  i.t.t.path
@@ -110,6 +112,6 @@
       ::  perform query and return result
       ~&  >  "your query: "
       ~&  >  query
-      ``noun+!>(`(list row:n)`-:(q:db.state app query))
+      ``noun+!>(`(list row:n)`-:(~(q db:n database.state) app query))
     ==
 --
