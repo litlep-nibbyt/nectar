@@ -111,7 +111,7 @@
       [%add-table name=@ actual=table]
       [%rename-table old=@ new=@]
       [%drop-table name=@]
-      ::  %add-column
+      [%add-column table=@ col-name=@ =column-type]
       ::  %drop-column
       ::  %edit-column
       ::  ??
