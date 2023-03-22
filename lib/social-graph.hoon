@@ -1,39 +1,6 @@
 /-  *social-graph
 |%
 ::
-::  motivation:
-::  I know about a bunch of ships, crypto addresses, and entities.
-::  I want to assign arbitrary tags, associated with specific apps, to these.
-::  That app can then programmatically write to its tags, while any other
-::  app I use can read from them.
-::
-::  I have contacts app that contains saved metadata by ship, such as
-::  irl name, phone number, email address. Contacts app applies a %contacts
-::  protocol to ships, which contains in metadata a set of category tags,
-::  user-defined.
-::
-::  Then, in chat app, I can either apply new tags to contacts or quickly get
-::  a set of ships with which have a specific tag under the %contacts protocol.
-::
-::  In documents app, I can piggyback off the %contacts protocol to quickly
-::  generate a set of collaborators for a collection or individual document
-::  by selecting all ships with a certain tag or grouping of tags. Example:
-::  make new document to share with %uqbar-dao, or just &(%uqbar-dao %devs),
-::  or &(%uqbar-dao |(%marketing %finance)).
-::
-::  I cannot put arbitrarily complex data along an edge. If my protocol seeks
-::  to assign, say, an uqbar address to a ship as a sort of "address book",
-::  it should assign a protocol label and then expose a scry path to give the
-::  actual data. Example: I have address 0x1234 for ~zod, so my graph has a
-::  directed edge to ~zod with protocol %uqbar-address and no tags. An app
-::  then scries local app %uqbar-address with path /~zod to receive [~ 0x1234].
-::
-::  Creating new protocols vs. just assigning tags in existing protocols is
-::  a choice over write control. Right now, a protocol name is equal to an
-::  app name. Only that app can add/del tags on that protocol. An app like
-::  %contacts will provide its own open API for editing contacts and thus tags,
-::  but many apps/protocols will not.
-::
 ::  TODO: flesh out an example case for a globally-attested edge and build
 ::  ability to handle that into edge/app/tag definitions
 ::

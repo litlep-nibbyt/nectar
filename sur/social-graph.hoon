@@ -11,7 +11,7 @@
 +$  edges  (mip:mip app tag nodeset)
 ::
 +$  app  term
-+$  tag  path  :: can be fully qualified scry path
++$  tag  path  ::  cannot be ~
 ::
 +$  node
   $%  [%ship @p]
@@ -48,8 +48,11 @@
   [source=@p =app =tag]
 ::
 +$  graph-result  ::  comes out of scries
+  $@  ?
   $%  [%controller @p]
       [%nodes (set node)]
+      [%nodeset nodeset]
       [%edge (unit edge)]
+      [%tags (set tag)]
   ==
 --
