@@ -163,8 +163,9 @@
           (~(del gi nodes) from to)
         (~(put gi nodes) from to e)
     ::  edges
-    =-  (~(put gi edges) app tag `nodeset`-)
-    (~(del ju (~(gut gi edges) app tag *nodeset)) from to)
+    =+  (~(del ju (~(gut gi edges) app tag *nodeset)) from to)
+    ?~  -  (~(del gi edges) app tag)
+    (~(put gi edges) app tag `nodeset`-)
   ::
   ::  replace our own nodeset for a given app+tag
   ::
