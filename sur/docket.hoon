@@ -1,1 +1,1 @@
-../../garden-dev/sur/docket.hoon
+../../landscape/sur/docket.hoon
