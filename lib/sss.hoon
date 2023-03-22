@@ -88,7 +88,7 @@
       =/  [wave=(unit wave:lake) =flow]
         =/  old=flow  (~(gut by sub) current *flow)
         ?-  what.res
-          %rock  ?>  (gte aeon.res aeon.old)
+          %rock  ::  ?>  (gte aeon.res aeon.old)  REMOVED TO ENABLE KICKING
                  `[aeon.res | rock.res]
           %wave  ~|  [%weird-wave res=res old=old]
                  ?>  =(aeon.res +(aeon.old))

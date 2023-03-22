@@ -87,28 +87,25 @@
         =^  cards  subgraph-pub
           =-  (give:du-pub [%track app -] wave)
           ?-(-.q.edit ?(%add-tag %del-tag) tag.q.edit, %nuke-tag tag.q.edit)
-        ~&  >  "subgraph-pub is: {<read:du-pub>}"
         [cards this]
       ::
           %social-graph-track
         =,  !<(track:g vase)
-        ::  TODO use permissions here
         :_  this  :_  ~
         (surf:da-sub source %social-graph [%track app tag])
       ::
           %sss-on-rock
-        ~&  >>  "got on-rock"
         =/  msg  !<(from:da-sub (fled vase))
         ?+    -.msg  `this
             [%track @ ^]
-          ::  TODO get app+tag from path
           =/  =app:g  ;;(app:g -.+.-.msg)
           =/  =tag:g  ;;(tag:g +.+.-.msg)
-          ~&  >>  [app tag]
-          ~&  >>>  +.msg
-          ?~  wave.msg  `this
-          ::  integrate update into our local graph
           =.  graph.state
+            ?~  wave.msg
+              ::  if no wave, use rock in msg as setpoint
+              %-  ~(replace-nodeset sg:g graph.state)
+              [rock.msg app tag]
+            ::  integrate wave into our local graph
             ?-    -.u.wave.msg
                 %new-edge
               %-  ~(add-tag sg:g graph.state)
@@ -123,9 +120,21 @@
         ==
       ::
           %sss-to-pub
-        ?-    msg=!<(into:du-pub (fled vase))
-            [[%track *] *]
-          ::  TODO get app+tag from path
+        =/  msg  !<(into:du-pub (fled vase))
+        ?+    -.msg  `this
+            [%track @ ^]
+          =/  =app:g  ;;(app:g -.+.-.msg)
+          =/  =tag:g  ;;(tag:g +.+.-.msg)
+          =/  perm  (~(gut by perms.state) app %private)
+          ?.  ?|  =(%public perm)
+                  ?&  =(%only-tagged perm)
+                      ::  src.bowl must appear in nodeset under this app+tag
+                      =/  =nodeset:g  (~(get-nodeset sg:g graph.state) app tag)
+                      ?:  (~(has by nodeset) [%ship src.bowl])  %.y
+                      %-  ~(any by nodeset)
+                      |=(n=(set node:g) (~(has in n) [%ship src.bowl]))
+              ==  ==
+            `this
           =^  cards  subgraph-pub
             (apply:du-pub msg)
           [cards this]
@@ -134,7 +143,6 @@
           %sss-subgraph
         =^  cards  subgraph-sub
           (apply:da-sub !<(into:da-sub (fled vase)))
-        ~&  >  "subgraph-sub is: {<read:da-sub>}"
         [cards this]
       ==
     ::
@@ -149,7 +157,6 @@
       ?+    wire   `this
           [~ %sss %on-rock @ @ @ %track *]
         =.  subgraph-sub  (chit:da-sub |3:wire sign)
-        ~&  >  "sub-log is: {<read:da-sub>}"
         `this
       ==
     ::
@@ -179,29 +186,29 @@
     =/  =tag:g  t.t.t.path
     ``social-graph-result+!>(`graph-result:g`[%controller our.bowl])
   ::
-      [%x %nodes @ @ @ ^]
+      ?([%x %nodes @ ?(%ship %address) @ ^] [%x %nodes @ %entity @ @ ^])
     ::  /nodes/[app]/[from-node]/[tag]
     =/  =app:g  `@tas`i.t.t.path
     =/  =node:g
-      =+  `@tas`i.t.t.t.path
-      ?+  -  !!
+      =+  i.t.t.t.path
+      ?-  -
         %ship     [- (slav %p i.t.t.t.t.path)]
         %address  [- (slav %ux i.t.t.t.t.path)]
-        %entity   [- `@tas`i.t.t.t.t.path]
+        %entity   [- [`@tas`i `@t`i.t]:t.t.t.t.path]
       ==
     =/  =tag:g  t.t.t.t.t.path
     =+  (~(get-nodes sg:g graph.state) node app `tag)
     ``social-graph-result+!>(`graph-result:g`[%nodes -])
   ::
-      [%x %nodes @ @ @ ~]
+      ?([%x %nodes @ ?(%ship %address) @ ~] [%x %nodes @ %entity @ @ ~])
     ::  /nodes/[app]/[from-node]
     =/  =app:g  `@tas`i.t.t.path
     =/  =node:g
-      =+  `@tas`i.t.t.t.path
-      ?+  -  !!
+      =+  i.t.t.t.path
+      ?-  -
         %ship     [- (slav %p i.t.t.t.t.path)]
         %address  [- (slav %ux i.t.t.t.t.path)]
-        %entity   [- `@tas`i.t.t.t.t.path]
+        %entity   [- [`@tas`i `@t`i.t]:t.t.t.path]
       ==
     =+  (~(get-nodes sg:g graph.state) node app ~)
     ``social-graph-result+!>(`graph-result:g`[%nodes -])

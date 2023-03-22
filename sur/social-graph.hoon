@@ -16,7 +16,7 @@
 +$  node
   $%  [%ship @p]
       [%address @ux]
-      [%entity term]    ::  TODO
+      [%entity =app name=@t]
   ==
 ::
 +$  edge     (jug app tag)
