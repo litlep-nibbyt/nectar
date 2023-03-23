@@ -31,28 +31,30 @@
   $~  %private
   ?(%private %public %only-tagged)
 ::
-::  !! need USERSPACE PERMS to make this right !!
+::  !! need USERSPACE PERMS to make this right and remove the (pair term ..) !!
 ::
 +$  edit
-  %+  pair  term  ::  the app poking us, for now -- not used for start/stop tracking
+  %+  pair  term  ::  the app poking us, for now
   $%  [%add-tag =tag from=node to=node]
       [%del-tag =tag from=node to=node]
-      [%nuke-tag =tag]
+      [%nuke-tag =tag]  ::  remove this tag from all edges
       ::  if not set, defaults to %private
       [%set-perms level=permission-level]
   ==
 ::
 ::  poke with this to indicate that you want to get pushed updates
+::  tracking happens on top-level value in tag-path, always --
+::  this means if a tracker subscribes to /my/tag, they're watching /my
+::  and will get updates for all tags in the chosen app starting with /my
 ::
-+$  track
-  [source=@p =app =tag]
++$  track  [source=@p =app =tag]
 ::
 +$  graph-result  ::  comes out of scries
   $@  ?
   $%  [%controller @p]
       [%nodes (set node)]
       [%nodeset nodeset]
-      [%edge (unit edge)]
       [%tags (set tag)]
+      [%app-tags (set tag)]
   ==
 --

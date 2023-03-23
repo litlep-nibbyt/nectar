@@ -46,6 +46,13 @@
       `(~(get ju u.ap) app)
     ~
   ::
+  ::  receive set of tags used by given app
+  ::
+  ++  get-app-tags
+    |=  =app
+    ^-  (set tag)
+    ~(key by (~(gut by edges) app ~))
+  ::
   ::  see if a given relationship exists
   ::
   ++  has-tag

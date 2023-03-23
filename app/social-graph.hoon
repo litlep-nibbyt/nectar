@@ -23,6 +23,7 @@
 ::  /nodes/[app]/[from-node]/[tag]  <-  returns (set node)
 ::  /nodeset/[app]/[tag]            <-  returns the nodeset at app+tag
 ::  /edge/[from-node]/[to-node]     <-  returns (set tag)
+::  /app-tags/[app]                 <-  returns (set tag)
 ::  /has-tag/[app]/[from-node]/[to-node]/[tag]        <-  returns loobean
 ::  /bidirectional/[app]/[from-node]/[to-node]/[tag]  <-  returns loobean
 --
@@ -203,7 +204,8 @@
   ::  /controller/[app]/[tag]  <-  returns @p of who we source a tag from
   ::  /nodes/[app]/[from-node]/[tag]  <-  returns (set node)
   ::  /nodeset/[app]/[tag]            <-  returns the nodeset at app+tag
-  ::  /edge/[from-node]/[to-node]     <-  returns (set tag)
+  ::  /tags/[from-node]/[to-node]     <-  returns (set tag)
+  ::  /app-tags/[app]                 <-  returns (set tag)
   ::  /has-tag/[app]/[from-node]/[to-node]/[tag]        <-  returns loobean
   ::  /bidirectional/[app]/[from-node]/[to-node]/[tag]  <-  returns loobean
   |=  =path
@@ -265,8 +267,8 @@
   ::  /edge/[app]/[from-node]/[to-node]
   ::  returns a set of all tags on edge between two nodes, in given app
   ::
-      $%  [%edge @ ?(%ship %address) @ ?(%ship %address) @ ~]
-          [%edge @ ?(%ship %address) @ %entity @ @ ~]
+      $%  [%tags @ ?(%ship %address) @ ?(%ship %address) @ ~]
+          [%tags @ ?(%ship %address) @ %entity @ @ ~]
       ==
     =/  =app:g  `@tas`i.t.path
     =/  n1=node:g
@@ -285,8 +287,8 @@
     =-  tags+?~(- ~ (~(get ju u.-) app))
     (~(get-edge sg:g graph.state) n1 n2)
   ::
-      $%  [%edge @ %entity @ @ ?(%ship %address) @ ~]
-          [%edge @ %entity @ @ %entity @ @ ~]
+      $%  [%tags @ %entity @ @ ?(%ship %address) @ ~]
+          [%tags @ %entity @ @ %entity @ @ ~]
       ==
     =/  =app:g  `@tas`i.t.path
     =/  n1=node:g
@@ -300,6 +302,13 @@
       ==
     =-  tags+?~(- ~ (~(get ju u.-) app))
     (~(get-edge sg:g graph.state) n1 n2)
+  ::
+  ::  /app-tags/[app]
+  ::  returns set of all tags stored by given app
+  ::
+      [%app-tags @ ~]
+    =/  =app:g  `@tas`i.t.path
+    app-tags+(~(get-app-tags sg:g graph.state) app)
   ::
   ::  /has-tag/[app]/[from-node]/[to-node]/[tag]
   ::  returns true if tag exists on given edge, false otherwise
