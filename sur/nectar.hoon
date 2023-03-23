@@ -3,6 +3,7 @@
 ::            database
 ::
 |%
+::  +database map of table
 +$  database  (map table-name table)
 ::  need name of app poking to be in bowl! for now, this:
 +$  query-poke      [app=@tas =query]
@@ -111,7 +112,7 @@
       [%add-table name=@ actual=table]
       [%rename-table old=@ new=@]
       [%drop-table name=@]
-      ::  %add-column
+      [%add-column table=@ col-name=@ =column-type fill=value]
       ::  %drop-column
       ::  %edit-column
       ::  ??

@@ -39,6 +39,7 @@
       %rename-table  `(rename-table app^old.query app^new.query)
       %drop-table    `(drop-table app^name.query)
       %update-rows   `(update-rows app^table.query rows.query)
+      %add-column    `(add-column app^table.query col-name.query column-type.query fill.query)
     ==
   ::
   ++  add-table
@@ -93,6 +94,13 @@
     =^  rows  table
       (~(update tab table) primary-key.table where.query cols.query)
     [rows (~(put by database) app^table.query table)]
+  ::
+  ++  add-column
+    |=  [name=table-name col-name=term =column-type fill=value]
+    ^+  database
+    =/  =table  (~(got by database) name) 
+    =.  table  (~(add-column tab table) col-name column-type fill)
+    (~(put by database) name table)
   ::
   ::  run a NON-MUTATING query and get a list of rows as a result
   ::
@@ -219,10 +227,11 @@
     ::  can only have 1 primary key, must be the indicated one
     ::
     ?>  .=  1
-        %-  lent
-        %+  skim  ~(tap by indices.table)
-        |=  [(list term) key-type]
-        primary
+      %-  lent
+      %+  skim  ~(tap by indices.table)
+      |=  [(list term) key-type]
+      primary
+    ~|  "%nectar: primary key must also be a unique index"
     ?>  &(primary unique):(~(got by indices.table) primary-key.table)
     ::
     ::  columns must be contiguous from 0
@@ -761,6 +770,33 @@
     %+  weld
       (get-rows at-key)
     q.with
+  ::
+  ::  add-column: adds new column into table records
+  ::
+  ++  add-column
+    |=  [col-name=term =column-type fill=value]
+    =.  schema.table
+      ::  always add the new column
+      =;  new=schema
+        (~(put by new) col-name column-type)
+      ::  if spot taken, shift existing spots that come after to the right
+      =+  %+  turn  
+            ~(val by schema.table) 
+          |=(a=^column-type spot.a)
+      ?~  %+(find ~[spot.column-type] -)
+        schema.table
+      %-  ~(urn by schema.table)
+      |=  [term b=^column-type]  
+      ?.  (gte spot.b spot.column-type)
+        b 
+      b(spot +(spot.b))
+    ::  add new empty column to records
+    =/  new-rows=(list row)
+      %+  turn
+        `(list row)`(~(get-rows tab table) ~)
+      |=  =row
+      `^row`(into row spot.column-type fill)
+    (insert new-rows update=&)
   --
 ::
 ++  apply-condition
