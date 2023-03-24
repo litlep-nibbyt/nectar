@@ -1,39 +1,6 @@
 /-  *social-graph
 |%
 ::
-::  motivation:
-::  I know about a bunch of ships, crypto addresses, and entities.
-::  I want to assign arbitrary tags, associated with specific apps, to these.
-::  That app can then programmatically write to its tags, while any other
-::  app I use can read from them.
-::
-::  I have contacts app that contains saved metadata by ship, such as
-::  irl name, phone number, email address. Contacts app applies a %contacts
-::  protocol to ships, which contains in metadata a set of category tags,
-::  user-defined.
-::
-::  Then, in chat app, I can either apply new tags to contacts or quickly get
-::  a set of ships with which have a specific tag under the %contacts protocol.
-::
-::  In documents app, I can piggyback off the %contacts protocol to quickly
-::  generate a set of collaborators for a collection or individual document
-::  by selecting all ships with a certain tag or grouping of tags. Example:
-::  make new document to share with %uqbar-dao, or just &(%uqbar-dao %devs),
-::  or &(%uqbar-dao |(%marketing %finance)).
-::
-::  I cannot put arbitrarily complex data along an edge. If my protocol seeks
-::  to assign, say, an uqbar address to a ship as a sort of "address book",
-::  it should assign a protocol label and then expose a scry path to give the
-::  actual data. Example: I have address 0x1234 for ~zod, so my graph has a
-::  directed edge to ~zod with protocol %uqbar-address and no tags. An app
-::  then scries local app %uqbar-address with path /~zod to receive [~ 0x1234].
-::
-::  Creating new protocols vs. just assigning tags in existing protocols is
-::  a choice over write control. Right now, a protocol name is equal to an
-::  app name. Only that app can add/del tags on that protocol. An app like
-::  %contacts will provide its own open API for editing contacts and thus tags,
-::  but many apps/protocols will not.
-::
 ::  TODO: flesh out an example case for a globally-attested edge and build
 ::  ability to handle that into edge/app/tag definitions
 ::
@@ -50,7 +17,6 @@
     ^-  (set node)
     ?^  tag
       (~(get ju (~(gut gi edges) app u.tag *nodeset)) from)
-    ::  =<  q
     %-  ~(rep by (~(gut by edges) app ~))
     |=  [n=[^tag nodeset] res=(set node)]
     (~(uni in res) (~(get ju +.n) from))
@@ -69,15 +35,19 @@
     ^-  (unit edge)
     (~(get gi nodes) from to)
   ::
-  ::  receive set of tags associated with a node->node edge
-  ::  under a specific app. returns ~ if no app at edge
+  ::  receive set of tags used by given app
+  ::
+  ++  get-app-tags
+    |=  =app
+    ^-  (set tag)
+    ~(key by (~(gut by edges) app ~))
+  ::
+  ::  receive full app's worth of graph
   ::
   ++  get-app
-    |=  [from=node to=node =app]
-    ^-  (unit (set tag))
-    ?^  ap=(~(get gi nodes) from to)
-      `(~(get ju u.ap) app)
-    ~
+    |=  =app
+    ^-  (map tag nodeset)
+    (~(gut by edges) app ~)
   ::
   ::  see if a given relationship exists
   ::
@@ -114,34 +84,56 @@
     |=  n=(set ^node)
     (~(del in n) node)
   ::
-  ::  remove all edges associated with a particular app
-  ::
-  ++  nuke-app
-    |=  =app
-    ^-  social-graph
-    :-  ::  nodes
-        %-  ~(run by nodes)
-        |=  m=(map node edge)
-        %-  ~(run by m)
-        |=  =edge
-        (~(del by edge) app)
-    ::  edges
-    (~(del by edges) app)
-  ::
   ::  remove a tag on all edges within a particular app
   ::
   ++  nuke-tag
     |=  [=app =tag]
     ^-  social-graph
     :-  ::  nodes
-        %-  ~(run by nodes)
-        |=  m=(map node edge)
-        %-  ~(run by m)
-        |=  =edge
-        (~(del ju edge) app tag)
+        ::  use nodeset at tag to iteratively clean edges
+        =/  nl=(list [node node])
+          (tap-nodeset (~(gut by (~(gut by edges) app ~)) tag ~))
+        |-
+        ?~  nl  nodes
+        =.  nodes
+          ?~  e=(~(del ju (~(gut gi nodes) -.i.nl +.i.nl *edge)) app tag)
+            (~(del gi nodes) -.i.nl +.i.nl)
+          (~(put gi nodes) -.i.nl +.i.nl e)
+        $(nl t.nl)
     ::  edges
-    %+  ~(put by edges)  app
-    (~(del by (~(gut by edges) app ~)) tag)
+    ?~  e=(~(del by (~(gut by edges) app ~)) tag)
+      (~(del by edges) app)
+    (~(put by edges) app e)
+
+  ::
+  ::  given a top-level path item, remove all tags that start with it in app
+  ::
+  ++  nuke-top-level-tag
+    |=  [=app top=@]
+    ^-  social-graph
+    :-  ::  nodes
+        =/  tags=(list tag)
+          %+  skim  ~(tap in (get-app-tags app))
+          |=(=tag ?&(?=(^ tag) =(i.tag top)))
+        |-
+        ?~  tags  nodes
+        ::  use nodeset at tag to iteratively clean edges
+        =/  nl=(list [node node])
+          (tap-nodeset (~(gut by (~(gut by edges) app ~)) i.tags ~))
+        =.  nodes
+          |-  ?~  nl  nodes
+          =.  nodes
+            ?~  e=(~(del ju (~(gut gi nodes) -.i.nl +.i.nl *edge)) app i.tags)
+              (~(del gi nodes) -.i.nl +.i.nl)
+            (~(put gi nodes) -.i.nl +.i.nl e)
+          $(nl t.nl)
+        $(tags t.tags)
+    ::  edges
+    =-  ?~(- (~(del by edges) app) (~(put by edges) app -))
+    %-  ~(gas by *(map tag nodeset))
+    %+  skip
+      ~(tap by (~(gut by edges) app ~))
+    |=([=tag nodeset] ?&(?=(^ tag) =(i.tag top)))
   ::
   ++  add-tag
     |=  [from=node to=node =app =tag]
@@ -150,7 +142,7 @@
         =-  (~(put gi nodes) from to -)
         (~(put ju (~(gut gi nodes) from to ~)) app tag)
     ::  edges
-    =-  (~(put gi edges) app tag `nodeset`-)
+    =-  (~(put gi edges) app tag -)
     (~(put ju (~(gut gi edges) app tag *nodeset)) from to)
   ::
   ++  del-tag
@@ -159,33 +151,32 @@
     :-  ::  nodes
         ::  if this deletion results in an empty edge,
         ::  remove 'to' node from nodes
-        ?~  e=(~(del ju `edge`(~(gut gi nodes) from to *edge)) app tag)
+        ?~  e=(~(del ju (~(gut gi nodes) from to *edge)) app tag)
           (~(del gi nodes) from to)
         (~(put gi nodes) from to e)
     ::  edges
-    =+  (~(del ju (~(gut gi edges) app tag *nodeset)) from to)
-    ?~  -  (~(del gi edges) app tag)
-    (~(put gi edges) app tag `nodeset`-)
+    ?~  e=(~(del ju (~(gut gi edges) app tag *nodeset)) from to)
+      (~(del gi edges) app tag)
+    (~(put gi edges) app tag e)
   ::
   ::  replace our own nodeset for a given app+tag
   ::
   ++  replace-nodeset
     |=  [=nodeset =app =tag]
     ^-  social-graph
-    ::  first nuke tag for clean slate
+    ::  first, nuke tag for clean slate
     =.  nodes
-      %-  ~(run by nodes)
-      |=  m=(map node edge)
-      %-  ~(run by m)
-      |=  =edge
-      (~(del ju edge) app tag)
+      =/  nl=(list [node node])
+        (tap-nodeset (~(gut by (~(gut by edges) app ~)) tag ~))
+      |-
+      ?~  nl  nodes
+      =.  nodes
+        ?~  e=(~(del ju (~(gut gi nodes) -.i.nl +.i.nl *edge)) app tag)
+          (~(del gi nodes) -.i.nl +.i.nl)
+        (~(put gi nodes) -.i.nl +.i.nl e)
+      $(nl t.nl)
     =/  nl=(list [node node])
-      %-  zing
-      %+  turn  ~(tap by nodeset)
-      |=  [n1=node ns=(set node)]
-      %+  turn  ~(tap in ns)
-      |=  n2=node
-      [n1 n2]
+      (tap-nodeset nodeset)
     :-  ::  nodes
         |-
         ?~  nl  nodes
@@ -195,7 +186,7 @@
     (~(put gi edges) app tag nodeset)
   --
 ::
-::  pleasant helper function
+::  pleasant helper functions
 ::
 ++  in-nodeset
   |=  [no=node ns=nodeset]
@@ -207,4 +198,12 @@
   %-  ~(rep by ns)
   |=  [p=[node (set node)] q=(set node)]
   (~(uni in q) +.p)
+::
+++  tap-nodeset
+  |=  =nodeset
+  ^-  (list [node node])
+  %-  zing
+  %+  turn  ~(tap by nodeset)
+  |=  [n1=node s=(set node)]
+  (turn ~(tap in s) |=(n2=node [n1 n2]))
 --
