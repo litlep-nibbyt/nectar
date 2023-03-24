@@ -5,10 +5,6 @@
 ::
 ::  %social-graph agent state
 ::
-+$  versioned-state
-  $%  [%0 *]
-      state-1
-  ==
 +$  state-1
   $:  %1
       graph=social-graph:g
@@ -56,10 +52,12 @@
 ++  on-load
   |=  =vase
   ^-  (quip card _this)
-  =/  old  !<([=versioned-state =_subgraph-sub =_subgraph-pub] vase)
+  ?:  =(%0 -.q.vase)
+    on-init
+  =/  old  !<([=state-1 =_subgraph-sub =_subgraph-pub] vase)
   :-  ~
   %=  this
-    state  ?+(-.versioned-state.old *state-1 %1 versioned-state.old)
+    state         state-1.old
     subgraph-sub  subgraph-sub.old
     subgraph-pub  subgraph-pub.old
   ==
