@@ -24,6 +24,7 @@
 ::  /nodeset/[app]/[tag]            <-  returns the nodeset at app+tag
 ::  /tags/[from-node]/[to-node]     <-  returns (set tag)
 ::  /app-tags/[app]                 <-  returns (set tag)
+::  /app/[app]                      <-  returns (map tag nodeset)
 ::  /has-tag/[app]/[from-node]/[to-node]/[tag]        <-  returns loobean
 ::  /bidirectional/[app]/[from-node]/[to-node]/[tag]  <-  returns loobean
 --
@@ -236,6 +237,7 @@
   ::  /nodeset/[app]/[tag]            <-  returns the nodeset at app+tag
   ::  /tags/[from-node]/[to-node]     <-  returns (set tag)
   ::  /app-tags/[app]                 <-  returns (set tag)
+  ::  /app/[app]                      <-  returns (map tag nodeset)
   ::  /has-tag/[app]/[from-node]/[to-node]/[tag]        <-  returns loobean
   ::  /bidirectional/[app]/[from-node]/[to-node]/[tag]  <-  returns loobean
   |=  =path
@@ -339,6 +341,13 @@
       [%app-tags @ ~]
     =/  =app:g  `@tas`i.t.path
     app-tags+(~(get-app-tags sg:g graph.state) app)
+  ::
+  ::  /app/[app]
+  ::  returns full mapping of all information held in given app
+  ::
+      [%app @ ~]
+    =/  =app:g  `@tas`i.t.path
+    app+(~(get-app sg:g graph.state) app)
   ::
   ::  /has-tag/[app]/[from-node]/[to-node]/[tag]
   ::  returns true if tag exists on given edge, false otherwise

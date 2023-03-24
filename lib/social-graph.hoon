@@ -42,6 +42,13 @@
     ^-  (set tag)
     ~(key by (~(gut by edges) app ~))
   ::
+  ::  receive full app's worth of graph
+  ::
+  ++  get-app
+    |=  =app
+    ^-  (map tag nodeset)
+    (~(gut by edges) app ~)
+  ::
   ::  see if a given relationship exists
   ::
   ++  has-tag

@@ -61,5 +61,6 @@
       [%nodeset nodeset]
       [%tags (set tag)]
       [%app-tags (set tag)]
+      [%app (map tag nodeset)]
   ==
 --
