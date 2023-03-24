@@ -1,3 +1,8 @@
-###  Nectar: RDBMS on Urbit
+###  %nectar: RDBMS on Urbit
 
-Goal: create an agent which manages relational databases for other agents. Create a table format and a query format. Expose queries through on-peek, allow creation of new databases and tables through on-poke.
+%nectar is a relational database. It's a work-in-progress.
+
+###  %social-graph
+
+%social-graph is a tool for storing relationships between ships, addresses, and entities.
+https://hodzod.bacrys.org/blog/introducing-social-graph
