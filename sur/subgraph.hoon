@@ -9,6 +9,7 @@
   $%  [%new-edge =tag:sg from=node:sg to=node:sg]
       [%gone-edge =tag:sg from=node:sg to=node:sg]
       [%gone-tag =tag:sg ~]
+      [%gone-top-level-tag ~]
   ==
 ++  wash
   |=  [=rock =wave]
@@ -23,5 +24,7 @@
     (~(put by rock) tag.wave -)
       %gone-tag
     (~(del by rock) tag.wave)
+      %gone-top-level-tag
+    *_rock
   ==
 --

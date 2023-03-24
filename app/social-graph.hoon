@@ -29,7 +29,7 @@
 --
 ::
 ^-  agent:gall
-%+  verb  &
+::  %+  verb  &
 %-  agent:dbug
 ::  SSS declarations
 =/  subgraph-sub  (mk-subs subgraph ,[%track @ @ ~])
@@ -74,14 +74,18 @@
     =/  =app:g  p.edit
     ?:  ?=(%set-perms -.q.edit)
       `this(perms.state (~(put by perms.state) app level.q.edit))
-    =/  =tag:g
+    =/  =tag:g  ::  this is so annoying, type refinement issue
       ?-  -.q.edit
-        ?(%add-tag %del-tag)  tag.q.edit
-        %nuke-tag             tag.q.edit
+        ?(%add-tag %del-tag)              tag.q.edit
+        ?(%nuke-tag %nuke-top-level-tag)  tag.q.edit
       ==
     ::  tag cannot be empty
     ?:  ?=(~ tag)
       ~|("social-graph: tag cannot be empty!" !!)
+    ::  reject edits to graph if we are tracking
+    ::  someone else's on the given app+tag
+    ?:  (~(has by tracking.state) [app tag])
+      ~|("social-graph: can't edit a tracked tag!" !!)
     =^  wave  graph.state
       ?-  -.q.edit
           %add-tag
@@ -93,6 +97,9 @@
           %nuke-tag
         :-  [%gone-tag tag ~]
         (~(nuke-tag sg:g graph.state) app tag)
+          %nuke-top-level-tag
+        :-  [%gone-top-level-tag ~]
+        (~(nuke-top-level-tag sg:g graph.state) app -.tag)
       ==
     ::  hand out update to subscribers on this app and (top-level) tag
     =^  cards  subgraph-pub
@@ -101,13 +108,31 @@
   ::
       %social-graph-track
     ?>  =(our src):bowl
-    =,  !<(track:g vase)
+    =/  =track:g  !<(track:g vase)
     ::  don't track yourself..
-    ?>  !=(our.bowl source)
-    ?:  ?=(~ tag)
+    ?:  =(our.bowl source.q.track)
+      ~|("social-graph: don't track yourself!" !!)
+    ?:  ?=(~ tag.q.track)
       ~|("social-graph: tracked tag cannot be empty!" !!)
-    :_  this(tracking.state (~(put by tracking.state) [app -.tag^~] source))
-    (surf:da-sub source %social-graph [%track app -.tag ~])^~
+    ?-    -.q.track
+        %start
+      ::  destroy our local representation of this top-level tag,
+      ::  to prepare for synchronization with remote
+      =,  track
+      =.  graph.state
+        (~(nuke-top-level-tag sg:g graph.state) p -.tag.q)
+      ::  TODO if we're already tracking someone, stop tracking them here!
+      ::  TODO *kick* anyone tracking us!
+      =^  cards  subgraph-pub
+        (give:du-pub [%track p -.tag.q ~] [%gone-top-level-tag ~])
+      :-  (surf:da-sub source.q %social-graph [%track p -.tag.q ~])^cards
+      this(tracking.state (~(put by tracking.state) [p -.tag.q^~] source.q))
+    ::
+        %stop
+      ::  TODO stop tracking a solid-state sub!
+      =,  track
+      `this(tracking.state (~(del by tracking.state) [p -.tag.q^~]))
+    ==
   ::
       %sss-on-rock
     =/  msg  !<(from:da-sub (fled vase))
@@ -115,6 +140,9 @@
         [%track @ @ ~]
       =/  =app:g  `@tas`-.+.-.msg
       =/  =tag:g  `path`+.+.-.msg
+      ::  make sure we are actually tracking this app+tag
+      ?.  =(src.msg (~(gut by tracking.state) [app tag] our.bowl))
+        `this  ::  TODO ignore for now, but crash in future when we can leave
       =.  graph.state
         ?~  wave.msg
           ::  if no wave, use rock in msg as setpoint
@@ -134,6 +162,8 @@
           [from.u.wave.msg to.u.wave.msg app tag.u.wave.msg]
             %gone-tag
           (~(nuke-tag sg:g graph.state) app tag.u.wave.msg)
+            %gone-top-level-tag
+          (~(nuke-top-level-tag sg:g graph:state) app -.tag)
         ==
       `this
     ==

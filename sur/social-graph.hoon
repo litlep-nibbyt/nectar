@@ -31,13 +31,14 @@
   $~  %private
   ?(%private %public %only-tagged)
 ::
-::  !! need USERSPACE PERMS to make this right and remove the (pair term ..) !!
+::  !! need USERSPACE PERMS to make these right and remove the (pair term ..) !!
 ::
 +$  edit
-  %+  pair  term  ::  the app poking us, for now
+  %+  pair  term  ::  the local app poking us, for now
   $%  [%add-tag =tag from=node to=node]
       [%del-tag =tag from=node to=node]
       [%nuke-tag =tag]  ::  remove this tag from all edges
+      [%nuke-top-level-tag =tag]  :: remove all tags with same first element
       ::  if not set, defaults to %private
       [%set-perms level=permission-level]
   ==
@@ -47,7 +48,11 @@
 ::  this means if a tracker subscribes to /my/tag, they're watching /my
 ::  and will get updates for all tags in the chosen app starting with /my
 ::
-+$  track  [source=@p =app =tag]
++$  track
+  %+  pair  term  ::  the local app poking us, for now
+  $%  [%start source=@p =tag]
+      [%stop source=@p =tag]
+  ==
 ::
 +$  graph-result  ::  comes out of scries
   $@  ?
