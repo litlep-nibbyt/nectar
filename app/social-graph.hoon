@@ -22,7 +22,7 @@
 ::  /controller/[app]/[tag]  <-  returns @p of who we source a tag from
 ::  /nodes/[app]/[from-node]/[tag]  <-  returns (set node)
 ::  /nodeset/[app]/[tag]            <-  returns the nodeset at app+tag
-::  /edge/[from-node]/[to-node]     <-  returns (set tag)
+::  /tags/[from-node]/[to-node]     <-  returns (set tag)
 ::  /app-tags/[app]                 <-  returns (set tag)
 ::  /has-tag/[app]/[from-node]/[to-node]/[tag]        <-  returns loobean
 ::  /bidirectional/[app]/[from-node]/[to-node]/[tag]  <-  returns loobean
@@ -264,7 +264,7 @@
       ==
     nodes+(~(get-nodes sg:g graph.state) node app ~)
   ::
-  ::  /edge/[app]/[from-node]/[to-node]
+  ::  /tags/[app]/[from-node]/[to-node]
   ::  returns a set of all tags on edge between two nodes, in given app
   ::
       $%  [%tags @ ?(%ship %address) @ ?(%ship %address) @ ~]
