@@ -40,6 +40,7 @@
       %drop-table    `(drop-table app^name.query)
       %update-rows   `(update-rows app^table.query rows.query)
       %add-column    `(add-column app^table.query col-name.query column-type.query fill.query)
+      %drop-column   `(drop-column app^table.query col-name.query)
     ==
   ::
   ++  add-table
@@ -100,6 +101,14 @@
     ^+  database
     =/  =table  (~(got by database) name) 
     =.  table  (~(add-column tab table) col-name column-type fill)
+    (~(put by database) name table)
+  ::
+  ++  drop-column
+    |=  [name=table-name =column-name]
+    ^+  database
+    :: ~&  >  '%nectar: dropping column'
+    =/  =table  (~(got by database) name)
+    =.  table  (~(drop-column tab table) column-name)
     (~(put by database) name table)
   ::
   ::  run a NON-MUTATING query and get a list of rows as a result
@@ -550,6 +559,7 @@
     =.  records.table
       %-  ~(rut by records.table)
       |=  [name=(list term) =record]
+      ~&  >  indices.table
       =/  =key-type  (~(got by indices.table) name)
       =/  lis=(list [=key =row])
         %+  turn  rows
@@ -797,6 +807,30 @@
       |=  =row
       `^row`(into row spot.column-type fill)
     (insert new-rows update=&)
+  ::
+  ::  drop-column: remove column from table
+  ::
+  ++  drop-column
+    |=  col=column-name
+    ^+  table
+    ~|  '%nectar: cannot drop column inside primary key'
+    ?>  .=(~ (find ~[col] primary-key.table))
+    =.  indices.table
+      ^-  indices
+      %-  malt
+      %+  skim
+      ~(tap by indices.table)
+      |=  [a=(list column-name) key-type]
+      ?^((find ~[col] a) %| %&)
+    ::  Delete columns from records
+    =/  new-rows=(list row)
+    %+  turn
+      `(list row)`(~(get-rows tab table) ~)
+    |=  =row
+    =+  spot:(~(got by schema.table) col)
+    (oust [- 1] row)
+  =.  schema.table  (~(del by schema.table) col)
+  (insert new-rows update=&)    
   --
 ::
 ++  apply-condition

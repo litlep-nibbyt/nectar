@@ -113,7 +113,7 @@
       [%rename-table old=@ new=@]
       [%drop-table name=@]
       [%add-column table=@ col-name=@ =column-type fill=value]
-      ::  %drop-column
+      [%drop-column table=@ col-name=@]
       ::  %edit-column
       ::  ??
   ==
