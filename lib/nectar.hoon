@@ -561,8 +561,6 @@
     =.  records.table
       %-  ~(rut by records.table)
       |=  [name=(list term) =record]
-      ~&  >  indices.table
-      ~&  >  name
       =/  =key-type  (~(got by indices.table) name)
       =/  lis=(list [=key =row])
         %+  turn  rows
@@ -623,6 +621,8 @@
           p.record
         %^  put:mm  p.record  key.i.lis
         =+  (get:mm p.record key.i.lis)
+        ~&  >  -
+        ~&  >  "key: {<key.i.lis>}"
         (~(put by (fall - ~)) pri row.i.lis)
       ==
     table
@@ -829,7 +829,6 @@
       ?^((find ~[col-name] a) %| %&)
     ::  Shift spots after dropped column to the left,
     ::  Remove column entry from schema
-    ~&  >  indices.table
     =.  schema.table
       %.  col-name
       %~  del  by
@@ -840,6 +839,13 @@
       b(spot (sub spot.b 1))
     ::  Delete column from records (records is a map)
     ::  we need to perform this for each entry in records
+    =.  records.table
+      ^+  records.table
+      %-  malt
+      %+  skim
+        ~(tap by records.table)
+      |=  [a=(list term) record]
+      ?^((find ~[col-name] a) %| %&)
     =/  new-rows=(list row)
       %+  turn
       `(list row)`(~(get-rows tab table) ~)
