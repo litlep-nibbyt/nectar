@@ -39,9 +39,8 @@
       %rename-table  `(rename-table app^old.query app^new.query)
       %drop-table    `(drop-table app^name.query)
       %update-rows   `(update-rows app^table.query rows.query)
-      %add-column    `(modify-column app^table.query query)
-      %drop-column   `(modify-column app^table.query query)
-      %edit-column   `(modify-column app^table.query query)
+      ?(%add-column %drop-column %edit-column)
+        `(modify-column app^table.query query)
     ==
   ::
   ++  add-table
@@ -621,8 +620,6 @@
           p.record
         %^  put:mm  p.record  key.i.lis
         =+  (get:mm p.record key.i.lis)
-        ~&  >  -
-        ~&  >  "key: {<key.i.lis>}"
         (~(put by (fall - ~)) pri row.i.lis)
       ==
     table
@@ -821,7 +818,6 @@
     =/  to-drop=column-type  (~(got by schema.table) col-name)
     ::  Remove indices which include dropped column
     =.  indices.table
-      ^-  indices
       %-  malt
       %+  skim
       ~(tap by indices.table)
@@ -837,10 +833,8 @@
       ?.  (gte spot.b spot.to-drop)
         b 
       b(spot (sub spot.b 1))
-    ::  Delete column from records (records is a map)
-    ::  we need to perform this for each entry in records
+    ::  Delete entries from records when dropped column is in key
     =.  records.table
-      ^+  records.table
       %-  malt
       %+  skim
         ~(tap by records.table)
