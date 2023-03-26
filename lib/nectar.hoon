@@ -39,8 +39,9 @@
       %rename-table  `(rename-table app^old.query app^new.query)
       %drop-table    `(drop-table app^name.query)
       %update-rows   `(update-rows app^table.query rows.query)
-      %add-column    `(add-column app^table.query col-name.query column-type.query fill.query)
-      %drop-column   `(drop-column app^table.query col-name.query)
+      %add-column    `(modify-column app^table.query query)
+      %drop-column   `(modify-column app^table.query query)
+      %edit-column   `(modify-column app^table.query query)
     ==
   ::
   ++  add-table
@@ -96,20 +97,21 @@
       (~(update tab table) primary-key.table where.query cols.query)
     [rows (~(put by database) app^table.query table)]
   ::
-  ++  add-column
-    |=  [name=table-name col-name=term =column-type fill=value]
+  ++  modify-column
+    |=  [name=table-name =query]
     ^+  database
-    =/  =table  (~(got by database) name) 
-    =.  table  (~(add-column tab table) col-name column-type fill)
-    (~(put by database) name table)
-  ::
-  ++  drop-column
-    |=  [name=table-name =column-name]
-    ^+  database
-    :: ~&  >  '%nectar: dropping column'
     =/  =table  (~(got by database) name)
-    =.  table  (~(drop-column tab table) column-name)
-    (~(put by database) name table)
+    %+  ~(put by database)  name
+      ?+  -.query  !!
+          %add-column
+        (~(add-column tab table) +.+.query)
+    ::
+          %drop-column
+        (~(drop-column tab table) col-name.query)
+    ::
+          %edit-column
+        (~(edit-column tab table) +.+.query)
+      ==
   ::
   ::  run a NON-MUTATING query and get a list of rows as a result
   ::
@@ -560,6 +562,7 @@
       %-  ~(rut by records.table)
       |=  [name=(list term) =record]
       ~&  >  indices.table
+      ~&  >  name
       =/  =key-type  (~(got by indices.table) name)
       =/  lis=(list [=key =row])
         %+  turn  rows
@@ -784,20 +787,20 @@
   ::  add-column: adds new column into table records
   ::
   ++  add-column
-    |=  [col-name=term =column-type fill=value]
+    |=  [col-name=term col=column-type fill=value]
     =.  schema.table
       ::  always add the new column
       =;  new=schema
-        (~(put by new) col-name column-type)
+        (~(put by new) col-name col)
       ::  if spot taken, shift existing spots that come after to the right
       =+  %+  turn  
             ~(val by schema.table) 
-          |=(a=^column-type spot.a)
-      ?~  %+(find ~[spot.column-type] -)
+          |=(a=column-type spot.a)
+      ?~  %+(find ~[spot.col] -)
         schema.table
       %-  ~(urn by schema.table)
-      |=  [term b=^column-type]  
-      ?.  (gte spot.b spot.column-type)
+      |=  [term b=column-type]  
+      ?.  (gte spot.b spot.col)
         b 
       b(spot +(spot.b))
     ::  add new empty column to records
@@ -805,32 +808,52 @@
       %+  turn
         `(list row)`(~(get-rows tab table) ~)
       |=  =row
-      `^row`(into row spot.column-type fill)
+      `^row`(into row spot.col fill)
     (insert new-rows update=&)
   ::
   ::  drop-column: remove column from table
   ::
   ++  drop-column
-    |=  col=column-name
+    |=  col-name=term
     ^+  table
     ~|  '%nectar: cannot drop column inside primary key'
-    ?>  .=(~ (find ~[col] primary-key.table))
+    ?>  .=(~ (find ~[col-name] primary-key.table))
+    =/  to-drop=column-type  (~(got by schema.table) col-name)
+    ::  Remove indices which include dropped column
     =.  indices.table
       ^-  indices
       %-  malt
       %+  skim
       ~(tap by indices.table)
       |=  [a=(list column-name) key-type]
-      ?^((find ~[col] a) %| %&)
-    ::  Delete columns from records
+      ?^((find ~[col-name] a) %| %&)
+    ::  Shift spots after dropped column to the left,
+    ::  Remove column entry from schema
+    ~&  >  indices.table
+    =.  schema.table
+      %.  col-name
+      %~  del  by
+      %-  ~(urn by schema.table)
+      |=  [term b=column-type]  
+      ?.  (gte spot.b spot.to-drop)
+        b 
+      b(spot (sub spot.b 1))
+    ::  Delete column from records (records is a map)
+    ::  we need to perform this for each entry in records
     =/  new-rows=(list row)
-    %+  turn
+      %+  turn
       `(list row)`(~(get-rows tab table) ~)
-    |=  =row
-    =+  spot:(~(got by schema.table) col)
-    (oust [- 1] row)
-  =.  schema.table  (~(del by schema.table) col)
-  (insert new-rows update=&)    
+      |=(=row (oust [spot.to-drop 1] row))
+    (insert new-rows update=&)
+  ::
+  ++  edit-column
+    |=  [col-name=term new-opt=(unit ?) new-typ=(unit typ)]
+    =+  (~(got by schema.table) col-name)
+    =.  optional
+      ?@(new-opt optional (need new-opt))
+    =.  typ
+      ?@(new-typ typ (need new-typ))
+    table(schema (~(put by schema.table) col-name -))
   --
 ::
 ++  apply-condition
